@@ -101,8 +101,7 @@ export function NewsletterScreen() {
       const payload = {
         service_id:    EMAILJS_SERVICE_ID,
         template_id:   EMAILJS_TEMPLATE_ID,
-        // Gunakan accessToken (bukan user_id) sesuai EmailJS v4 API
-        accessToken:   EMAILJS_PUBLIC_KEY,
+        user_id:       EMAILJS_PUBLIC_KEY,  // EmailJS v1.0 REST API pakai user_id
         template_params: {
           from_name:  fbName.trim()  || 'Anonim',
           from_email: fbEmail.trim() || 'Tidak dicantumkan',

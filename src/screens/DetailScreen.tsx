@@ -339,38 +339,37 @@ export function DetailScreen({ route, navigation }: any) {
               </TouchableOpacity>
             )}
 
-            {/* Going / Interested */}
+            {/* Going / Interested — sesuai website:
+                past = dummy disabled, confirmed = aktif, rumor = aktif */}
             {past ? (
-              // Past: tampilkan dummy count disabled
               <View style={styles.voteRow}>
-                <View style={[styles.voteBtn, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, opacity: 0.6 }]}>
+                <View style={[styles.voteBtn, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, opacity: 0.5 }]}>
                   <Ionicons name="checkmark-circle-outline" size={16} color={colors.textMuted} />
-                  <Text style={[styles.voteBtnText, { color: colors.textMuted }]}>{t('going')} {going}</Text>
+                  <Text style={[styles.voteBtnText, { color: colors.textMuted }]}>🎟️ Hadir {going}</Text>
                 </View>
-                <View style={[styles.voteBtn, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, opacity: 0.6 }]}>
+                <View style={[styles.voteBtn, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, opacity: 0.5 }]}>
                   <Ionicons name="star-outline" size={16} color={colors.textMuted} />
-                  <Text style={[styles.voteBtnText, { color: colors.textMuted }]}>{t('interested')} {interested}</Text>
+                  <Text style={[styles.voteBtnText, { color: colors.textMuted }]}>⭐ Tertarik {interested}</Text>
                 </View>
               </View>
-            ) : !isRumor ? (
-              // Confirmed upcoming: aktif, bisa vote
+            ) : (
               <View style={styles.voteRow}>
                 <TouchableOpacity
                   style={[styles.voteBtn, { backgroundColor: myVote === 'going' ? colors.accent : colors.surfaceElevated, borderColor: colors.accent }]}
                   onPress={() => handleVote('going')}
                 >
                   <Ionicons name="checkmark-circle-outline" size={16} color={myVote === 'going' ? '#fff' : colors.accent} />
-                  <Text style={[styles.voteBtnText, { color: myVote === 'going' ? '#fff' : colors.accent }]}>{t('going')} {going}</Text>
+                  <Text style={[styles.voteBtnText, { color: myVote === 'going' ? '#fff' : colors.accent }]}>🎟️ Going {going}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.voteBtn, { backgroundColor: myVote === 'interested' ? colors.accentLight : colors.surfaceElevated, borderColor: colors.accentLight }]}
                   onPress={() => handleVote('interested')}
                 >
                   <Ionicons name="star-outline" size={16} color={myVote === 'interested' ? '#fff' : colors.accentLight} />
-                  <Text style={[styles.voteBtnText, { color: myVote === 'interested' ? '#fff' : colors.accentLight }]}>{t('interested')} {interested}</Text>
+                  <Text style={[styles.voteBtnText, { color: myVote === 'interested' ? '#fff' : colors.accentLight }]}>⭐ Interested {interested}</Text>
                 </TouchableOpacity>
               </View>
-            ) : null}
+            )}
 
             {/* Spotify Preview */}
             {spotifyUrl && (

@@ -9,60 +9,83 @@ interface SocialData {
   myVote: VoteType;
 }
 
-// Seed dummy untuk konser past — angka acak yang persist per concertId
-function pastSeed(concertId: string): { going: number; interested: number } {
-  // Hash sederhana dari concertId agar angka konsisten setiap load
-  let h = 0;
-  for (let i = 0; i < concertId.length; i++) h = (h * 31 + concertId.charCodeAt(i)) & 0xffffffff;
-  const going    = 100 + (Math.abs(h) % 900);      // 100 – 999
-  const interested = 300 + (Math.abs(h * 7) % 1500); // 300 – 1799
-  return { going, interested };
+const KEY_GOING    = 'cid_going_v2';
+const KEY_INTEREST = 'cid_interest_v2';
+const KEY_MYVOTE   = 'cid_myvote_v2';
+
+async function getCounts(key: string): Promise<Record<string, number>> {
+  try { return JSON.parse((await AsyncStorage.getItem(key)) || '{}'); } catch { return {}; }
+}
+async function saveCounts(key: string, data: Record<string, number>) {
+  await AsyncStorage.setItem(key, JSON.stringify(data));
+}
+async function getMyVotes(): Promise<Record<string, VoteType>> {
+  try { return JSON.parse((await AsyncStorage.getItem(KEY_MYVOTE)) || '{}'); } catch { return {}; }
 }
 
 export function useSocialFeatures(concertId: string, isPastConcert = false) {
-  const KEY = `cid_social_${concertId}`;
   const [data, setData] = useState<SocialData>({ going: 0, interested: 0, myVote: null });
 
   useEffect(() => {
-    if (isPastConcert) {
-      // Konser past: pakai dummy seed yang persist, tidak bisa di-vote
-      AsyncStorage.getItem(KEY).then(v => {
-        if (v) {
-          try { setData(JSON.parse(v)); return; } catch {}
+    let cancelled = false;
+    (async () => {
+      const going    = await getCounts(KEY_GOING);
+      const interest = await getCounts(KEY_INTEREST);
+      const myVotes  = await getMyVotes();
+
+      if (isPastConcert) {
+        // Dummy disabled — angka acak kalau belum ada, persist kalau sudah (sama dengan web)
+        if (going[concertId] == null) {
+          going[concertId]    = Math.floor(Math.random() * 900) + 100;
+          interest[concertId] = Math.floor(Math.random() * 1500) + 300;
+          await saveCounts(KEY_GOING, going);
+          await saveCounts(KEY_INTEREST, interest);
         }
-        const seed = { ...pastSeed(concertId), myVote: null };
-        setData(seed);
-        AsyncStorage.setItem(KEY, JSON.stringify(seed));
-      });
-    } else {
-      // Konser confirmed upcoming atau rumor: mulai dari 0, actual
-      AsyncStorage.getItem(KEY).then(v => {
-        if (v) {
-          try { setData(JSON.parse(v)); } catch {}
-        }
-        // Kalau belum ada, biarkan default { going: 0, interested: 0, myVote: null }
-      });
-    }
+        if (!cancelled) setData({ going: going[concertId], interested: interest[concertId], myVote: null });
+      } else {
+        // Actual dari 0, bisa vote (confirmed & rumor)
+        if (going[concertId] == null) going[concertId] = 0;
+        if (interest[concertId] == null) interest[concertId] = 0;
+        if (!cancelled) setData({ going: going[concertId], interested: interest[concertId], myVote: myVotes[concertId] || null });
+      }
+    })();
+    return () => { cancelled = true; };
   }, [concertId, isPastConcert]);
 
-  const vote = useCallback(async (type: 'going' | 'interested') => {
-    if (isPastConcert) return null; // Past tidak bisa vote
-    const next = { ...data };
-    if (next.myVote === type) {
-      if (type === 'going') next.going = Math.max(0, next.going - 1);
-      else next.interested = Math.max(0, next.interested - 1);
-      next.myVote = null;
+  const vote = useCallback(async (type: 'going' | 'interested'): Promise<VoteType> => {
+    if (isPastConcert) return null; // past tidak bisa vote
+
+    const going    = await getCounts(KEY_GOING);
+    const interest = await getCounts(KEY_INTEREST);
+    const myVotes  = await getMyVotes();
+
+    const prev = myVotes[concertId] || null;
+    if (going[concertId] == null)    going[concertId]    = 0;
+    if (interest[concertId] == null) interest[concertId] = 0;
+
+    if (prev === type) {
+      // Undo vote
+      if (type === 'going')      going[concertId]    = Math.max(0, going[concertId] - 1);
+      if (type === 'interested') interest[concertId] = Math.max(0, interest[concertId] - 1);
+      delete myVotes[concertId];
     } else {
-      if (next.myVote === 'going') next.going = Math.max(0, next.going - 1);
-      if (next.myVote === 'interested') next.interested = Math.max(0, next.interested - 1);
-      if (type === 'going') next.going += 1;
-      else next.interested += 1;
-      next.myVote = type;
+      // Undo prev jika ada
+      if (prev === 'going')      going[concertId]    = Math.max(0, going[concertId] - 1);
+      if (prev === 'interested') interest[concertId] = Math.max(0, interest[concertId] - 1);
+      // Tambah baru
+      if (type === 'going')      going[concertId]++;
+      if (type === 'interested') interest[concertId]++;
+      myVotes[concertId] = type;
     }
-    setData(next);
-    await AsyncStorage.setItem(KEY, JSON.stringify(next));
-    return next.myVote;
-  }, [data, KEY, isPastConcert]);
+
+    await saveCounts(KEY_GOING, going);
+    await saveCounts(KEY_INTEREST, interest);
+    await AsyncStorage.setItem(KEY_MYVOTE, JSON.stringify(myVotes));
+
+    const newVote = myVotes[concertId] || null;
+    setData({ going: going[concertId], interested: interest[concertId], myVote: newVote });
+    return newVote;
+  }, [concertId, isPastConcert]);
 
   return { going: data.going, interested: data.interested, myVote: data.myVote, vote };
 }
