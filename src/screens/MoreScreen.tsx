@@ -103,7 +103,7 @@ export function MoreScreen() {
             <Text style={[styles.aboutText, { color: colors.textMuted }]}>{t('aboutDesc')}</Text>
             <TouchableOpacity style={[styles.websiteBtn, { backgroundColor: colors.accent }]} onPress={() => Linking.openURL('https://www.list-concert-tour.web.id')}>
               <Ionicons name="globe-outline" size={16} color="#fff" />
-              <Text style={styles.websiteBtnText}>list-concert-tour.web.id</Text>
+              <Text style={styles.websiteBtnText}>Website</Text>
             </TouchableOpacity>
           </View>
         </View>

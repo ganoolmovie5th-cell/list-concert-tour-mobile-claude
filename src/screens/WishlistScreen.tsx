@@ -41,7 +41,7 @@ export function WishlistScreen({ navigation }: any) {
           <Text style={[styles.emptySub, { color: colors.textSubtle }]}>{t('emptyWishlistSub')}</Text>
           <TouchableOpacity
             style={[styles.exploreBtn, { backgroundColor: colors.accent }]}
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => navigation.navigate('HomeTab')}
           >
             <Text style={styles.exploreBtnText}>{t('exploreConcer')}</Text>
           </TouchableOpacity>

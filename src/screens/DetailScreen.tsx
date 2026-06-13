@@ -204,8 +204,8 @@ export function DetailScreen({ route, navigation }: any) {
               </TouchableOpacity>
             ) : null}
 
-            {/* Google Calendar */}
-            {calUrl && (
+            {/* Google Calendar — hanya untuk konser mendatang */}
+            {calUrl && !past && (
               <TouchableOpacity style={[styles.outlineBtn, { borderColor: colors.accent }]} onPress={() => Linking.openURL(calUrl)}>
                 <Ionicons name="calendar-outline" size={16} color={colors.accent} />
                 <Text style={[styles.outlineBtnText, { color: colors.accent }]}>{t('addToCalendar')}</Text>
@@ -225,8 +225,8 @@ export function DetailScreen({ route, navigation }: any) {
               </TouchableOpacity>
             )}
 
-            {/* Going / Interested */}
-            {!past && (
+            {/* Going / Interested — hanya upcoming & confirmed */}
+            {!past && concert.confirmStatus === 'confirmed' && (
               <View style={styles.voteRow}>
                 <TouchableOpacity
                   style={[styles.voteBtn, { backgroundColor: myVote === 'going' ? colors.accent : colors.surfaceElevated, borderColor: colors.accent }]}
