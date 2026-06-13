@@ -1,37 +1,48 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Linking, Alert,
+  StyleSheet, Linking, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
 const CATEGORIES = [
-  { value: 'data-salah', label: 'Info Salah / Data Tidak Akurat' },
-  { value: 'saran-fitur', label: 'Saran Fitur Baru' },
-  { value: 'bug', label: 'Laporan Bug' },
-  { value: 'lainnya', label: 'Lainnya' },
+  { value: 'kritik',   label: '🔴 Kritik' },
+  { value: 'saran',    label: '💡 Saran' },
+  { value: 'data',     label: '📋 Data Salah' },
+  { value: 'lainnya',  label: '💬 Lainnya' },
 ];
+
+// EmailJS config — sama persis dengan website
+const EMAILJS_SERVICE_ID  = 'service_lq3pvsq';
+const EMAILJS_TEMPLATE_ID = 'template_w8grsoa';
+const EMAILJS_PUBLIC_KEY  = 'Ph1AuCpm4gbC6zMw6';
+
+// Mailchimp subscribe via Vercel proxy (sama dengan website)
+const MAILCHIMP_ENDPOINT = 'https://www.list-concert-tour.web.id/api/subscribe';
 
 export function NewsletterScreen() {
   const { colors } = useTheme();
   const { t } = useLanguage();
 
   // Newsletter state
-  const [email, setEmail] = useState('');
-  const [nlSent, setNlSent] = useState(false);
+  const [email, setEmail]       = useState('');
+  const [nlSent, setNlSent]     = useState(false);
   const [nlLoading, setNlLoading] = useState(false);
 
   // Feedback state
-  const [fbName, setFbName] = useState('');
-  const [fbEmail, setFbEmail] = useState('');
-  const [fbCategory, setFbCategory] = useState('saran-fitur');
-  const [fbMessage, setFbMessage] = useState('');
-  const [fbSent, setFbSent] = useState(false);
-  const [fbLoading, setFbLoading] = useState(false);
+  const [fbName, setFbName]         = useState('');
+  const [fbEmail, setFbEmail]       = useState('');
+  const [fbCategory, setFbCategory] = useState('saran');
+  const [fbMessage, setFbMessage]   = useState('');
+  const [fbSent, setFbSent]         = useState(false);
+  const [fbLoading, setFbLoading]   = useState(false);
+  const [fbPhoto, setFbPhoto]       = useState<string | null>(null); // base64 murni
 
+  // ─── Newsletter subscribe via Vercel proxy (Mailchimp) ───
   const handleSubscribe = async () => {
     if (!email.trim() || !email.includes('@')) {
       Alert.alert('Email tidak valid', 'Masukkan alamat email yang benar.');
@@ -39,20 +50,19 @@ export function NewsletterScreen() {
     }
     setNlLoading(true);
     try {
-      // Kirim ke Mailchimp via fetch (no redirect)
-      const formData = new FormData();
-      formData.append('EMAIL', email.trim());
-      formData.append('u', '6e07748f7ad9c994e90d82a5f');
-      formData.append('id', '19bdc664b2');
-      formData.append('f_id', '007f7ee0f0');
-
-      await fetch(
-        'https://web.us20.list-manage.com/subscribe/post?u=6e07748f7ad9c994e90d82a5f&id=19bdc664b2',
-        { method: 'POST', body: formData, headers: { Accept: 'application/json' } }
-      );
-      // Mailchimp tidak return JSON dari endpoint ini, anggap sukses jika tidak error
-      setNlSent(true);
-      setEmail('');
+      const res = await fetch(MAILCHIMP_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.result === 'success') {
+        setNlSent(true);
+        setEmail('');
+      } else {
+        const msg = data.error || data.message || 'Gagal mendaftar. Coba lagi nanti.';
+        Alert.alert('Gagal', msg);
+      }
     } catch {
       Alert.alert('Gagal', 'Tidak bisa terhubung. Coba lagi nanti.');
     } finally {
@@ -60,6 +70,26 @@ export function NewsletterScreen() {
     }
   };
 
+  // ─── Pilih foto untuk lampiran feedback ───
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Izin diperlukan', 'Izinkan akses galeri untuk melampirkan foto.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+      base64: true, // minta base64 langsung dari ImagePicker
+    });
+    if (!result.canceled && result.assets[0]) {
+      // base64 murni tanpa prefix — sesuai dengan web (canvas.toDataURL().split(',')[1])
+      setFbPhoto(result.assets[0].base64 || null);
+    }
+  };
+
+  // ─── Kirim feedback via EmailJS REST API ───
   const handleFeedback = async () => {
     if (!fbMessage.trim() || fbMessage.trim().length < 10) {
       Alert.alert('Pesan terlalu pendek', 'Tulis pesan minimal 10 karakter.');
@@ -67,29 +97,34 @@ export function NewsletterScreen() {
     }
     setFbLoading(true);
     try {
-      // Kirim via EmailJS REST API — sama seperti di website
-      const categoryLabel = CATEGORIES.find(c => c.value === fbCategory)?.label || fbCategory;
+      const categoryLabel = CATEGORIES.find(c => c.value === fbCategory)?.label?.replace(/^[^\s]+\s/, '') || fbCategory;
+      const payload = {
+        service_id:    EMAILJS_SERVICE_ID,
+        template_id:   EMAILJS_TEMPLATE_ID,
+        // Gunakan accessToken (bukan user_id) sesuai EmailJS v4 API
+        accessToken:   EMAILJS_PUBLIC_KEY,
+        template_params: {
+          from_name:  fbName.trim()  || 'Anonim',
+          from_email: fbEmail.trim() || 'Tidak dicantumkan',
+          type:       categoryLabel.charAt(0).toUpperCase() + categoryLabel.slice(1),
+          message:    fbMessage.trim(),
+          sent_at:    new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+          // Kirim base64 murni — template EmailJS: <img src="data:image/jpeg;base64,{{photo_data}}" />
+          photo_data: fbPhoto || '',
+          has_photo:  fbPhoto ? 'ya' : 'tidak',
+        },
+      };
+
       const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: 'service_lq3pvsq',
-          template_id: 'template_w8grsoa',
-          user_id: 'Ph1AuCpm4gbC6zMw6',
-          template_params: {
-            from_name: fbName || 'Anonim',
-            from_email: fbEmail || 'tidak dicantumkan',
-            type: categoryLabel,
-            message: fbMessage,
-            sent_at: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
-            has_photo: false,
-          },
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         setFbSent(true);
-        setFbName(''); setFbEmail(''); setFbMessage(''); setFbCategory('saran-fitur');
+        setFbName(''); setFbEmail(''); setFbMessage('');
+        setFbCategory('saran'); setFbPhoto(null);
       } else {
         const text = await res.text();
         Alert.alert('Gagal', text || 'Pesan tidak terkirim. Coba lagi nanti.');
@@ -108,7 +143,7 @@ export function NewsletterScreen() {
           <Text style={[styles.title, { color: colors.text }]}>📩 Newsletter & Saran</Text>
         </View>
 
-        {/* Newsletter */}
+        {/* ── Newsletter ── */}
         <View style={styles.section}>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>📬 {t('newsletterTitle')}</Text>
@@ -117,7 +152,9 @@ export function NewsletterScreen() {
             {nlSent ? (
               <View style={[styles.successBox, { backgroundColor: colors.confirmedBg }]}>
                 <Ionicons name="checkmark-circle" size={22} color={colors.confirmed} />
-                <Text style={[styles.successText, { color: colors.confirmed }]}>🎉 Berhasil!</Text>
+                <Text style={[styles.successText, { color: colors.confirmed }]}>
+                  🎉 Berhasil didaftarkan!
+                </Text>
               </View>
             ) : (
               <>
@@ -137,29 +174,33 @@ export function NewsletterScreen() {
                   disabled={nlLoading}
                 >
                   <Ionicons name="mail-outline" size={18} color="#fff" />
-                  <Text style={styles.primaryBtnText}>{nlLoading ? 'Mendaftar...' : t('newsletterBtn')}</Text>
+                  <Text style={styles.primaryBtnText}>
+                    {nlLoading ? 'Mendaftar...' : t('newsletterBtn')}
+                  </Text>
                 </TouchableOpacity>
               </>
             )}
           </View>
         </View>
 
-        {/* Feedback */}
+        {/* ── Kritik & Saran ── */}
         <View style={styles.section}>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>💌 {t('feedbackTitle')}</Text>
-            <Text style={[styles.cardSub, { color: colors.textMuted }]}>{t('feedbackSub')}</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>📬 Kritik &amp; Saran</Text>
+            <Text style={[styles.cardSub, { color: colors.textMuted }]}>
+              Punya masukan, laporan data salah, atau saran fitur baru? Kirim ke kami!
+            </Text>
 
             {fbSent ? (
               <View style={[styles.successBox, { backgroundColor: colors.confirmedBg }]}>
                 <Ionicons name="checkmark-circle" size={22} color={colors.confirmed} />
                 <Text style={[styles.successText, { color: colors.confirmed }]}>
-                  ✅ Terima kasih! Pesanmu sudah terkirim.
+                  🎉 Terima kasih! Pesanmu sudah kami terima.
                 </Text>
               </View>
             ) : (
               <>
-                {/* Category */}
+                {/* Kategori */}
                 <Text style={[styles.label, { color: colors.textMuted }]}>Kategori</Text>
                 <View style={styles.categoryWrap}>
                   {CATEGORIES.map(cat => (
@@ -181,7 +222,8 @@ export function NewsletterScreen() {
                   ))}
                 </View>
 
-                <Text style={[styles.label, { color: colors.textMuted }]}>Nama (opsional)</Text>
+                {/* Nama */}
+                <Text style={[styles.label, { color: colors.textMuted }]}>Nama kamu (opsional)</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="Nama kamu"
@@ -190,7 +232,8 @@ export function NewsletterScreen() {
                   onChangeText={setFbName}
                 />
 
-                <Text style={[styles.label, { color: colors.textMuted }]}>Email balasan (opsional)</Text>
+                {/* Email */}
+                <Text style={[styles.label, { color: colors.textMuted }]}>Email (opsional)</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
                   placeholder="email@kamu.com"
@@ -201,15 +244,46 @@ export function NewsletterScreen() {
                   autoCapitalize="none"
                 />
 
+                {/* Pesan */}
                 <Text style={[styles.label, { color: colors.textMuted }]}>Pesan *</Text>
                 <TextInput
                   style={[styles.input, styles.textarea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
-                  placeholder="Tulis pesanmu di sini..."
+                  placeholder="Tuliskan pesan kamu di sini... (min 10 karakter)"
                   placeholderTextColor={colors.textSubtle}
                   value={fbMessage}
                   onChangeText={setFbMessage}
                   multiline
+                  maxLength={1000}
                 />
+
+                {/* Lampiran foto */}
+                <Text style={[styles.label, { color: colors.textMuted }]}>Lampiran foto (opsional)</Text>
+                {fbPhoto ? (
+                  <View style={styles.photoPreviewWrap}>
+                    <Image
+                      source={{ uri: `data:image/jpeg;base64,${fbPhoto}` }}
+                      style={styles.photoPreview}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={[styles.removePhotoBtn, { backgroundColor: colors.rumorBg }]}
+                      onPress={() => setFbPhoto(null)}
+                    >
+                      <Ionicons name="close" size={16} color={colors.rumor} />
+                      <Text style={[styles.removePhotoText, { color: colors.rumor }]}>Hapus foto</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.attachBtn, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}
+                    onPress={handlePickPhoto}
+                  >
+                    <Ionicons name="attach-outline" size={18} color={colors.textMuted} />
+                    <Text style={[styles.attachBtnText, { color: colors.textMuted }]}>
+                      📎 Lampirkan foto (JPG/PNG · maks 5MB)
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity
                   style={[styles.primaryBtn, { backgroundColor: fbLoading ? colors.textSubtle : colors.accent }]}
@@ -217,31 +291,31 @@ export function NewsletterScreen() {
                   disabled={fbLoading}
                 >
                   <Ionicons name="send-outline" size={16} color="#fff" />
-                  <Text style={styles.primaryBtnText}>{fbLoading ? 'Mengirim...' : t('sendFeedback')}</Text>
+                  <Text style={styles.primaryBtnText}>
+                    {fbLoading ? 'Mengirim...' : '📬 Kirim Pesan'}
+                  </Text>
                 </TouchableOpacity>
               </>
             )}
           </View>
         </View>
 
-        {/* Social links */}
+        {/* ── Sosial Media — disabled (belum ada akun) ── */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSubtle }]}>IKUTI KAMI</Text>
           <View style={styles.socialRow}>
-            <TouchableOpacity
-              style={[styles.socialBtn, { backgroundColor: '#E1306C22', borderColor: '#E1306C44' }]}
-              onPress={() => Linking.openURL('https://instagram.com/listconcerttour')}
-            >
-              <Ionicons name="logo-instagram" size={22} color="#E1306C" />
-              <Text style={[styles.socialText, { color: '#E1306C' }]}>Instagram</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.socialBtn, { backgroundColor: '#1DA1F222', borderColor: '#1DA1F244' }]}
-              onPress={() => Linking.openURL('https://twitter.com/listconcerttour')}
-            >
-              <Ionicons name="logo-twitter" size={22} color="#1DA1F2" />
-              <Text style={[styles.socialText, { color: '#1DA1F2' }]}>Twitter/X</Text>
-            </TouchableOpacity>
+            {/* Instagram — disabled, belum ada akun */}
+            <View style={[styles.socialBtn, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, opacity: 0.4 }]}>
+              <Ionicons name="logo-instagram" size={22} color={colors.textMuted} />
+              <Text style={[styles.socialText, { color: colors.textMuted }]}>Instagram</Text>
+              <Text style={[styles.comingSoon, { color: colors.textSubtle }]}>Segera</Text>
+            </View>
+            {/* Twitter — disabled, belum ada akun */}
+            <View style={[styles.socialBtn, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, opacity: 0.4 }]}>
+              <Ionicons name="logo-twitter" size={22} color={colors.textMuted} />
+              <Text style={[styles.socialText, { color: colors.textMuted }]}>Twitter/X</Text>
+              <Text style={[styles.comingSoon, { color: colors.textSubtle }]}>Segera</Text>
+            </View>
           </View>
         </View>
 
@@ -252,7 +326,7 @@ export function NewsletterScreen() {
             onPress={() => Linking.openURL('https://www.list-concert-tour.web.id')}
           >
             <Ionicons name="globe-outline" size={18} color={colors.accent} />
-            <Text style={[styles.websiteBtnText, { color: colors.accent }]}>Website</Text>
+            <Text style={[styles.websiteBtnText, { color: colors.accent }]}>Buka Website</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -279,9 +353,19 @@ const styles = StyleSheet.create({
   catChipText: { fontSize: 12, fontWeight: '500' },
   successBox: { borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   successText: { fontSize: 14, fontWeight: '600', flex: 1 },
+  // Sosial
   socialRow: { flexDirection: 'row', gap: 12 },
-  socialBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 14, borderWidth: 1, paddingVertical: 14 },
+  socialBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1, paddingVertical: 14, flexWrap: 'wrap' },
   socialText: { fontSize: 14, fontWeight: '600' },
+  comingSoon: { fontSize: 10, fontWeight: '500' },
+  // Website
   websiteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1.5, paddingVertical: 14 },
   websiteBtnText: { fontSize: 14, fontWeight: '700' },
+  // Foto lampiran
+  attachBtn: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  attachBtnText: { fontSize: 13, flex: 1 },
+  photoPreviewWrap: { gap: 8 },
+  photoPreview: { width: '100%', height: 160, borderRadius: 10, backgroundColor: '#333' },
+  removePhotoBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, alignSelf: 'flex-start' },
+  removePhotoText: { fontSize: 13, fontWeight: '600' },
 });

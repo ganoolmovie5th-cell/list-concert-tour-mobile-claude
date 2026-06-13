@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -33,7 +34,7 @@ export function DetailScreen({ route, navigation }: any) {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { toggle: toggleWishlist, isWishlisted } = useWishlist();
-  const { going, interested, myVote, vote } = useSocialFeatures(concertId);
+  const { going, interested, myVote, vote } = useSocialFeatures(concertId, past);
   const { comments, addComment, likeComment } = useDiscussion(concertId);
   const { reviews, hasReviewed, avgRating, addReview, likeReview } = useReviews(concertId);
   const { toggle: toggleBeenThere, hasAttended } = useBeenThere();
@@ -72,6 +73,31 @@ export function DetailScreen({ route, navigation }: any) {
 
   // Foto Fans
   const [showFotoForm, setShowFotoForm] = useState(false);
+  const [fotoCaption, setFotoCaption] = useState('');
+  const [fotoAuthor, setFotoAuthor] = useState('');
+  const [fotoLoading, setFotoLoading] = useState(false);
+
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Izin diperlukan', 'Izinkan akses galeri untuk upload foto.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setFotoLoading(true);
+      const uri = result.assets[0].uri;
+      await addPhoto(uri, fotoCaption, fotoAuthor);
+      setFotoCaption(''); setFotoAuthor('');
+      setShowFotoForm(false);
+      setFotoLoading(false);
+      showToast('📸 Foto berhasil ditambahkan!');
+    }
+  };
 
   if (!concert) {
     return (
@@ -84,6 +110,7 @@ export function DetailScreen({ route, navigation }: any) {
   const past = isPast(concert);
   const isRumor = concert.confirmStatus === 'rumor';
   const forumDisabled = past || isRumor;
+  const fotoEnabled = past; // Foto dari Fans: hanya untuk konser past (sudah berlangsung)
   const setlist = SETLISTS[concertId] || [];
   const socials = ARTIST_SOCIALS[concertId] || {};
   const spotifyId = SPOTIFY_ARTISTS[concertId] || null;
@@ -312,8 +339,21 @@ export function DetailScreen({ route, navigation }: any) {
               </TouchableOpacity>
             )}
 
-            {/* Going / Interested — upcoming confirmed only */}
-            {!past && !isRumor && (
+            {/* Going / Interested */}
+            {past ? (
+              // Past: tampilkan dummy count disabled
+              <View style={styles.voteRow}>
+                <View style={[styles.voteBtn, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, opacity: 0.6 }]}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color={colors.textMuted} />
+                  <Text style={[styles.voteBtnText, { color: colors.textMuted }]}>{t('going')} {going}</Text>
+                </View>
+                <View style={[styles.voteBtn, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, opacity: 0.6 }]}>
+                  <Ionicons name="star-outline" size={16} color={colors.textMuted} />
+                  <Text style={[styles.voteBtnText, { color: colors.textMuted }]}>{t('interested')} {interested}</Text>
+                </View>
+              </View>
+            ) : !isRumor ? (
+              // Confirmed upcoming: aktif, bisa vote
               <View style={styles.voteRow}>
                 <TouchableOpacity
                   style={[styles.voteBtn, { backgroundColor: myVote === 'going' ? colors.accent : colors.surfaceElevated, borderColor: colors.accent }]}
@@ -330,7 +370,7 @@ export function DetailScreen({ route, navigation }: any) {
                   <Text style={[styles.voteBtnText, { color: myVote === 'interested' ? '#fff' : colors.accentLight }]}>{t('interested')} {interested}</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null}
 
             {/* Spotify Preview */}
             {spotifyUrl && (
@@ -685,24 +725,46 @@ export function DetailScreen({ route, navigation }: any) {
             <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
               <View style={styles.cardHeaderRow}>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>📸 {t('fotoDariFans')}</Text>
-                <TouchableOpacity onPress={() => setShowFotoForm(v => !v)}>
-                  <Ionicons name={showFotoForm ? 'close-circle-outline' : 'add-circle-outline'} size={22} color={colors.accent} />
-                </TouchableOpacity>
+                {fotoEnabled && (
+                  <TouchableOpacity onPress={() => setShowFotoForm(v => !v)}>
+                    <Ionicons name={showFotoForm ? 'close-circle-outline' : 'add-circle-outline'} size={22} color={colors.accent} />
+                  </TouchableOpacity>
+                )}
               </View>
-              {showFotoForm && (
-                <View style={[styles.disabledBox, { backgroundColor: colors.surfaceElevated }]}>
-                  <Text style={[styles.disabledText, { color: colors.textSubtle }]}>
-                    Upload foto fans tersedia di versi web: list-concert-tour.web.id
-                  </Text>
+
+              {!fotoEnabled ? (
+                <Text style={[styles.disabledText, { color: colors.textSubtle }]}>
+                  {isRumor
+                    ? 'Foto fans hanya tersedia setelah konser berlangsung (status: Rumor).'
+                    : 'Foto fans hanya tersedia setelah konser berlangsung.'}
+                </Text>
+              ) : showFotoForm ? (
+                <View style={{ gap: 8 }}>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                    placeholder="Nama kamu (opsional)"
+                    placeholderTextColor={colors.textSubtle}
+                    value={fotoAuthor}
+                    onChangeText={setFotoAuthor}
+                  />
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                    placeholder="Caption foto (opsional)"
+                    placeholderTextColor={colors.textSubtle}
+                    value={fotoCaption}
+                    onChangeText={setFotoCaption}
+                  />
                   <TouchableOpacity
-                    style={[styles.outlineBtn, { borderColor: colors.accent, marginTop: 8 }]}
-                    onPress={() => Linking.openURL(`https://www.list-concert-tour.web.id`)}
+                    style={[styles.sendBtn, { backgroundColor: fotoLoading ? colors.textSubtle : colors.accent }]}
+                    onPress={handlePickPhoto}
+                    disabled={fotoLoading}
                   >
-                    <Ionicons name="globe-outline" size={14} color={colors.accent} />
-                    <Text style={[styles.outlineBtnText, { color: colors.accent }]}>Buka Website</Text>
+                    <Ionicons name="image-outline" size={18} color="#fff" />
+                    <Text style={styles.sendBtnText}>{fotoLoading ? 'Memproses...' : t('uploadFoto')}</Text>
                   </TouchableOpacity>
                 </View>
-              )}
+              ) : null}
+
               {photos.length === 0 ? (
                 <Text style={[styles.emptyInline, { color: colors.textSubtle }]}>{t('belumAdaFoto')}</Text>
               ) : (

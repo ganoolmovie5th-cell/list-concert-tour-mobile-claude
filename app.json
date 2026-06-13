@@ -13,14 +13,19 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "id.concertid.mobile"
+      "bundleIdentifier": "id.concertid.mobile",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Diperlukan untuk upload foto dari fans dan lampiran feedback.",
+        "NSPhotoLibraryAddUsageDescription": "Diperlukan untuk menyimpan foto."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f0a1a"
       },
-      "package": "id.concertid.mobile"
+      "package": "id.concertid.mobile",
+      "permissions": ["READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
     },
     "scheme": "concertid"
   }
