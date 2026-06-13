@@ -1,4 +1,5 @@
 import React from 'react';
+import { registerRootComponent } from 'expo';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { enableScreens } from 'react-native-screens';
@@ -8,7 +9,7 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 
 enableScreens();
 
-export default function App() {
+function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <ThemeProvider>
@@ -21,3 +22,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({ root: { flex: 1 } });
+
+registerRootComponent(App);
+
+export default App;
