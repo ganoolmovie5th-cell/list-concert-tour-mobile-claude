@@ -20,6 +20,7 @@ const CATEGORIES = [
 const EMAILJS_SERVICE_ID  = 'service_lq3pvsq';
 const EMAILJS_TEMPLATE_ID = 'template_w8grsoa';
 const EMAILJS_PUBLIC_KEY  = 'Ph1AuCpm4gbC6zMw6';
+const EMAILJS_PRIVATE_KEY = 'KHXx2RsnBVjAp4XyYw01U';
 
 // Mailchimp subscribe via Vercel proxy (sama dengan website)
 const MAILCHIMP_ENDPOINT = 'https://www.list-concert-tour.web.id/api/subscribe';
@@ -101,7 +102,8 @@ export function NewsletterScreen() {
       const payload = {
         service_id:    EMAILJS_SERVICE_ID,
         template_id:   EMAILJS_TEMPLATE_ID,
-        user_id:       EMAILJS_PUBLIC_KEY,  // EmailJS v1.0 REST API pakai user_id
+        user_id:       EMAILJS_PUBLIC_KEY,
+        accessToken:   EMAILJS_PRIVATE_KEY,
         template_params: {
           from_name:  fbName.trim()  || 'Anonim',
           from_email: fbEmail.trim() || 'Tidak dicantumkan',
@@ -116,7 +118,10 @@ export function NewsletterScreen() {
 
       const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost',
+        },
         body: JSON.stringify(payload),
       });
 
