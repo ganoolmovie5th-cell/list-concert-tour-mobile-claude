@@ -9,7 +9,6 @@
     "splash": { "image": "./assets/splash.png", "resizeMode": "contain", "backgroundColor": "#0f0a1a" },
     "ios": { "supportsTablet": true, "bundleIdentifier": "id.concertid.mobile" },
     "android": { "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#0f0a1a" }, "package": "id.concertid.mobile" },
-    "plugins": ["expo-font"],
     "scheme": "concertid",
     "newArchEnabled": false
   }
