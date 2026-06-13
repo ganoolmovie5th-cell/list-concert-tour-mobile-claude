@@ -81,12 +81,25 @@ export function NewsletterScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      quality: 0.7,
-      base64: true, // minta base64 langsung dari ImagePicker
+      // Resize ke max 400px dan quality 0.4 agar base64 di bawah 35KB
+      width: 400,
+      height: 400,
+      quality: 0.4,
+      base64: true,
+      exif: false,
     });
     if (!result.canceled && result.assets[0]) {
-      // base64 murni tanpa prefix — sesuai dengan web (canvas.toDataURL().split(',')[1])
-      setFbPhoto(result.assets[0].base64 || null);
+      const asset = result.assets[0];
+      // Estimasi ukuran base64: panjang string / 1.37 ≈ bytes
+      // Max 50KB payload total, foto aman di bawah 30KB base64
+      const b64 = asset.base64 || '';
+      const estimatedKB = (b64.length * 0.75) / 1024;
+      if (estimatedKB > 35) {
+        // Terlalu besar meski sudah compress — reject
+        Alert.alert('Foto terlalu besar', 'Pilih foto yang lebih kecil atau crop lebih kecil. Maks ~35KB setelah kompresi.');
+        return;
+      }
+      setFbPhoto(b64 || null);
     }
   };
 
@@ -99,6 +112,20 @@ export function NewsletterScreen() {
     setFbLoading(true);
     try {
       const categoryLabel = CATEGORIES.find(c => c.value === fbCategory)?.label?.replace(/^[^\s]+\s/, '') || fbCategory;
+
+      // Hitung estimasi total payload size — EmailJS limit 50KB
+      // base64: 1 byte ≈ 1.37 karakter base64
+      const photoB64 = fbPhoto || '';
+      const estimatedPhotoKB = (photoB64.length * 0.75) / 1024;
+      // Jika foto > 20KB setelah compress, drop foto dari payload agar tidak exceed limit
+      const safePhoto = estimatedPhotoKB <= 20 ? photoB64 : '';
+      if (photoB64 && !safePhoto) {
+        Alert.alert(
+          'Foto terlalu besar',
+          'Foto tidak dapat dilampirkan (melebihi batas EmailJS 50KB). Pesan tetap dikirim tanpa foto.',
+        );
+      }
+
       const payload = {
         service_id:    EMAILJS_SERVICE_ID,
         template_id:   EMAILJS_TEMPLATE_ID,
@@ -108,11 +135,10 @@ export function NewsletterScreen() {
           from_name:  fbName.trim()  || 'Anonim',
           from_email: fbEmail.trim() || 'Tidak dicantumkan',
           type:       categoryLabel.charAt(0).toUpperCase() + categoryLabel.slice(1),
-          message:    fbMessage.trim(),
+          message:    fbMessage.trim().slice(0, 500), // batasi 500 char agar tidak melebihi limit
           sent_at:    new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
-          // Kirim base64 murni — template EmailJS: <img src="data:image/jpeg;base64,{{photo_data}}" />
-          photo_data: fbPhoto || '',
-          has_photo:  fbPhoto ? 'ya' : 'tidak',
+          photo_data: safePhoto,
+          has_photo:  safePhoto ? 'ya' : 'tidak',
         },
       };
 
