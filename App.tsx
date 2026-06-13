@@ -1,7 +1,10 @@
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { enableScreens } from 'react-native-screens';
 import * as SplashScreen from 'expo-splash-screen';
+
+enableScreens();
 import { ThemeProvider } from './src/context/ThemeContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
