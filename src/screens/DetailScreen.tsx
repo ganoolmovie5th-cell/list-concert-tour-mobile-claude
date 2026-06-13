@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, Image, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Linking, Dimensions
+  StyleSheet, Linking, Dimensions, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,13 +12,20 @@ import { useSocialFeatures } from '../hooks/useSocialFeatures';
 import { useDiscussion } from '../hooks/useDiscussion';
 import { useReviews } from '../hooks/useReviews';
 import { useBeenThere } from '../hooks/useBeenThere';
+import { useTicketMarket } from '../hooks/useTicketMarket';
+import { useGroupBuying } from '../hooks/useGroupBuying';
+import { useFanPhotos } from '../hooks/useFanPhotos';
 import { ShareSheet } from '../components/ShareSheet';
 import { Toast } from '../components/Toast';
-import { CONCERTS, SETLISTS, ARTIST_SOCIALS } from '../data/concerts';
+import { CONCERTS, SETLISTS, ARTIST_SOCIALS, SPOTIFY_ARTISTS } from '../data/concerts';
 import { getGoogleCalendarUrl, isPast, timeAgo } from '../utils/helpers';
 
 const { width } = Dimensions.get('window');
 type Tab = 'info' | 'setlist' | 'diskusi' | 'review';
+
+const GENRE_LABEL: Record<string, string> = {
+  kpop: 'K-Pop', pop: 'Pop / R&B', rock: 'Rock / Metal', jazz: 'Jazz', indie: 'Indie / Festival',
+};
 
 export function DetailScreen({ route, navigation }: any) {
   const { concertId } = route.params;
@@ -30,18 +37,41 @@ export function DetailScreen({ route, navigation }: any) {
   const { comments, addComment, likeComment } = useDiscussion(concertId);
   const { reviews, hasReviewed, avgRating, addReview, likeReview } = useReviews(concertId);
   const { toggle: toggleBeenThere, hasAttended } = useBeenThere();
+  const { listings, addListing } = useTicketMarket(concertId);
+  const { posts, addPost } = useGroupBuying(concertId);
+  const { photos, addPhoto } = useFanPhotos(concertId);
 
   const [tab, setTab] = useState<Tab>('info');
   const [showShare, setShowShare] = useState(false);
   const [toast, setToast] = useState({ message: '', visible: false, type: 'success' as 'success' | 'error' | 'info' });
 
+  // Diskusi
   const [commentText, setCommentText] = useState('');
   const [commentAuthor, setCommentAuthor] = useState('');
   const [replyTo, setReplyTo] = useState<{ author: string; text: string } | null>(null);
 
+  // Review
   const [reviewAuthor, setReviewAuthor] = useState('');
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
+
+  // Forum Jual Beli
+  const [tmType, setTmType] = useState<'jual' | 'beli'>('jual');
+  const [tmName, setTmName] = useState('');
+  const [tmCategory, setTmCategory] = useState('');
+  const [tmQty, setTmQty] = useState('1');
+  const [tmPrice, setTmPrice] = useState('');
+  const [tmContact, setTmContact] = useState('');
+  const [tmNote, setTmNote] = useState('');
+  const [showTmForm, setShowTmForm] = useState(false);
+
+  // Cari Teman Nonton
+  const [gbName, setGbName] = useState('');
+  const [gbNote, setGbNote] = useState('');
+  const [showGbForm, setShowGbForm] = useState(false);
+
+  // Foto Fans
+  const [showFotoForm, setShowFotoForm] = useState(false);
 
   if (!concert) {
     return (
@@ -52,11 +82,18 @@ export function DetailScreen({ route, navigation }: any) {
   }
 
   const past = isPast(concert);
+  const isRumor = concert.confirmStatus === 'rumor';
+  const forumDisabled = past || isRumor;
   const setlist = SETLISTS[concertId] || [];
   const socials = ARTIST_SOCIALS[concertId] || {};
+  const spotifyId = SPOTIFY_ARTISTS[concertId] || null;
   const calUrl = getGoogleCalendarUrl(concert);
   const wishlisted = isWishlisted(concertId);
   const attended = hasAttended(concertId);
+
+  const mapsQuery = encodeURIComponent(`${concert.venue}, ${concert.city}`);
+  const mapsUrl = `https://maps.google.com/?q=${mapsQuery}`;
+  const spotifyUrl = spotifyId ? `https://open.spotify.com/artist/${spotifyId}` : null;
 
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message: msg, visible: true, type });
@@ -95,6 +132,32 @@ export function DetailScreen({ route, navigation }: any) {
     showToast(t('reviewSubmitted'));
   };
 
+  const handlePostListing = async () => {
+    if (!tmName.trim() || !tmContact.trim()) {
+      Alert.alert('Wajib diisi', 'Nama dan kontak harus diisi.');
+      return;
+    }
+    const ok = await addListing(tmType, tmName, tmCategory, parseInt(tmQty) || 1, tmPrice, tmContact, tmNote);
+    if (ok) {
+      setTmName(''); setTmCategory(''); setTmQty('1'); setTmPrice(''); setTmContact(''); setTmNote('');
+      setShowTmForm(false);
+      showToast('Listing berhasil diposting! 🎫');
+    }
+  };
+
+  const handlePostGroupBuying = async () => {
+    if (!gbName.trim()) {
+      Alert.alert('Wajib diisi', 'Nama harus diisi.');
+      return;
+    }
+    const ok = await addPost(gbName, gbNote);
+    if (ok) {
+      setGbName(''); setGbNote('');
+      setShowGbForm(false);
+      showToast('Post berhasil! 🎉');
+    }
+  };
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'info', label: 'Info' },
     { key: 'setlist', label: 'Setlist' },
@@ -117,11 +180,9 @@ export function DetailScreen({ route, navigation }: any) {
             resizeMode="cover"
           />
           <View style={[styles.heroOverlay, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
-          {/* Back */}
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          {/* Share + Wishlist */}
           <View style={styles.heroActions}>
             <TouchableOpacity style={styles.heroActionBtn} onPress={() => setShowShare(true)}>
               <Ionicons name="share-outline" size={20} color="#fff" />
@@ -130,7 +191,6 @@ export function DetailScreen({ route, navigation }: any) {
               <Ionicons name={wishlisted ? 'heart' : 'heart-outline'} size={20} color={wishlisted ? colors.wishlistActive : '#fff'} />
             </TouchableOpacity>
           </View>
-          {/* Status */}
           <View style={[styles.heroBadge, { backgroundColor: statusBg }]}>
             <Text style={[styles.heroBadgeText, { color: statusColor }]}>{statusLabel}</Text>
           </View>
@@ -138,7 +198,7 @@ export function DetailScreen({ route, navigation }: any) {
 
         {/* Title block */}
         <View style={[styles.titleBlock, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.emoji]}>{concert.emoji}</Text>
+          <Text style={styles.emoji}>{concert.emoji}</Text>
           <Text style={[styles.artistName, { color: colors.text }]}>{concert.artist}</Text>
           <Text style={[styles.tourName, { color: colors.textMuted }]}>{concert.tour}</Text>
           {concert.hot && !past && (
@@ -151,28 +211,36 @@ export function DetailScreen({ route, navigation }: any) {
         {/* Tabs */}
         <View style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           {TABS.map(tb => (
-            <TouchableOpacity key={tb.key} style={[styles.tab, tab === tb.key && { borderBottomColor: colors.accent, borderBottomWidth: 2 }]} onPress={() => setTab(tb.key)}>
+            <TouchableOpacity
+              key={tb.key}
+              style={[styles.tab, tab === tb.key && { borderBottomColor: colors.accent, borderBottomWidth: 2 }]}
+              onPress={() => setTab(tb.key)}
+            >
               <Text style={[styles.tabText, { color: tab === tb.key ? colors.accent : colors.textMuted }]}>{tb.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* INFO TAB */}
+        {/* ─── INFO TAB ─── */}
         {tab === 'info' && (
           <View style={styles.tabContent}>
-            {concert.confirmStatus === 'rumor' && (
+            {/* Rumor Warning */}
+            {isRumor && (
               <View style={[styles.rumorWarn, { backgroundColor: colors.rumorBg, borderColor: colors.rumor + '44' }]}>
                 <Text style={[styles.rumorText, { color: colors.rumor }]}>{t('rumorWarning')}</Text>
                 {concert.rumorDetail && <Text style={[styles.rumorDetail, { color: colors.textMuted }]}>{concert.rumorDetail}</Text>}
               </View>
             )}
 
-            {/* Date/Venue info */}
+            {/* Info Rows — urutan sesuai website */}
             {[
               { icon: 'calendar-outline', label: t('dateLabel'), value: concert.dates.join(' & ') },
               { icon: 'time-outline', label: t('timeLabel'), value: concert.time },
               { icon: 'location-outline', label: t('venueLabel'), value: `${concert.venue}, ${concert.city}` },
               { icon: 'business-outline', label: t('promotorLabel'), value: concert.promotor },
+              { icon: 'musical-notes-outline', label: t('genreLabel'), value: GENRE_LABEL[concert.genre] || concert.genre },
+              { icon: 'ticket-outline', label: t('platformLabel'), value: concert.ticketPlatform },
+              { icon: 'cash-outline', label: t('priceRangeLabel'), value: concert.priceRange },
             ].map(row => (
               <View key={row.label} style={[styles.infoRow, { borderBottomColor: colors.border }]}>
                 <Ionicons name={row.icon as any} size={18} color={colors.accent} style={{ width: 26 }} />
@@ -183,7 +251,16 @@ export function DetailScreen({ route, navigation }: any) {
               </View>
             ))}
 
-            {/* Ticket categories */}
+            {/* Google Maps */}
+            <TouchableOpacity
+              style={[styles.outlineBtn, { borderColor: colors.accent }]}
+              onPress={() => Linking.openURL(mapsUrl)}
+            >
+              <Ionicons name="map-outline" size={16} color={colors.accent} />
+              <Text style={[styles.outlineBtnText, { color: colors.accent }]}>{t('openMaps')}</Text>
+            </TouchableOpacity>
+
+            {/* Ticket Categories */}
             {concert.ticketCategories.length > 0 && (
               <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>{t('ticketCategories')}</Text>
@@ -196,37 +273,47 @@ export function DetailScreen({ route, navigation }: any) {
               </View>
             )}
 
-            {/* Buy Ticket */}
-            {!past && concert.confirmStatus === 'confirmed' && concert.ticketUrl ? (
-              <TouchableOpacity style={[styles.bigBtn, { backgroundColor: colors.accent }]} onPress={() => Linking.openURL(concert.ticketUrl)}>
+            {/* Buy Ticket — confirmed upcoming only */}
+            {!past && !isRumor && concert.ticketUrl ? (
+              <TouchableOpacity
+                style={[styles.bigBtn, { backgroundColor: colors.accent }]}
+                onPress={() => Linking.openURL(concert.ticketUrl)}
+              >
                 <Ionicons name="ticket-outline" size={18} color="#fff" />
-                <Text style={styles.bigBtnText}>{t('buyTicketNow')} – {concert.ticketPlatform}</Text>
+                <Text style={styles.bigBtnText}>{t('buyTicketNow')}</Text>
               </TouchableOpacity>
             ) : null}
 
-            {/* Google Calendar — hanya untuk konser mendatang */}
+            {/* Google Calendar — upcoming confirmed only */}
             {calUrl && !past && (
-              <TouchableOpacity style={[styles.outlineBtn, { borderColor: colors.accent }]} onPress={() => Linking.openURL(calUrl)}>
+              <TouchableOpacity
+                style={[styles.outlineBtn, { borderColor: colors.accent }]}
+                onPress={() => Linking.openURL(calUrl)}
+              >
                 <Ionicons name="calendar-outline" size={16} color={colors.accent} />
                 <Text style={[styles.outlineBtnText, { color: colors.accent }]}>{t('addToCalendar')}</Text>
               </TouchableOpacity>
             )}
 
-            {/* Been There (past only) */}
+            {/* Been There — past only */}
             {past && (
               <TouchableOpacity
                 style={[styles.outlineBtn, { borderColor: attended ? colors.confirmed : colors.border }]}
                 onPress={handleBeenThere}
               >
-                <Ionicons name={attended ? 'checkmark-circle' : 'checkmark-circle-outline'} size={16} color={attended ? colors.confirmed : colors.textMuted} />
+                <Ionicons
+                  name={attended ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                  size={16}
+                  color={attended ? colors.confirmed : colors.textMuted}
+                />
                 <Text style={[styles.outlineBtnText, { color: attended ? colors.confirmed : colors.textMuted }]}>
                   {attended ? `✅ ${t('beenThere')}` : t('markBeenThere')}
                 </Text>
               </TouchableOpacity>
             )}
 
-            {/* Going / Interested — hanya upcoming & confirmed */}
-            {!past && concert.confirmStatus === 'confirmed' && (
+            {/* Going / Interested — upcoming confirmed only */}
+            {!past && !isRumor && (
               <View style={styles.voteRow}>
                 <TouchableOpacity
                   style={[styles.voteBtn, { backgroundColor: myVote === 'going' ? colors.accent : colors.surfaceElevated, borderColor: colors.accent }]}
@@ -243,6 +330,18 @@ export function DetailScreen({ route, navigation }: any) {
                   <Text style={[styles.voteBtnText, { color: myVote === 'interested' ? '#fff' : colors.accentLight }]}>{t('interested')} {interested}</Text>
                 </TouchableOpacity>
               </View>
+            )}
+
+            {/* Spotify Preview */}
+            {spotifyUrl && (
+              <TouchableOpacity
+                style={[styles.spotifyBtn, { backgroundColor: '#1DB95422' }]}
+                onPress={() => Linking.openURL(spotifyUrl)}
+              >
+                <Ionicons name="musical-notes" size={18} color="#1DB954" />
+                <Text style={[styles.spotifyBtnText, { color: '#1DB954' }]}>{t('spotifyPreview')}</Text>
+                <Ionicons name="open-outline" size={14} color="#1DB95488" />
+              </TouchableOpacity>
             )}
 
             {/* Description */}
@@ -265,19 +364,25 @@ export function DetailScreen({ route, navigation }: any) {
               </View>
             )}
 
-            {/* Social links */}
+            {/* Social Media */}
             {(socials.instagram || socials.twitter) && (
               <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>{t('socialMedia')}</Text>
                 <View style={styles.socialRow}>
                   {socials.instagram && (
-                    <TouchableOpacity style={[styles.socialBtn, { backgroundColor: '#E1306C22' }]} onPress={() => Linking.openURL(socials.instagram!)}>
+                    <TouchableOpacity
+                      style={[styles.socialBtn, { backgroundColor: '#E1306C22' }]}
+                      onPress={() => Linking.openURL(socials.instagram!)}
+                    >
                       <Ionicons name="logo-instagram" size={20} color="#E1306C" />
                       <Text style={[styles.socialText, { color: '#E1306C' }]}>Instagram</Text>
                     </TouchableOpacity>
                   )}
                   {socials.twitter && (
-                    <TouchableOpacity style={[styles.socialBtn, { backgroundColor: '#1DA1F222' }]} onPress={() => Linking.openURL(socials.twitter!)}>
+                    <TouchableOpacity
+                      style={[styles.socialBtn, { backgroundColor: '#1DA1F222' }]}
+                      onPress={() => Linking.openURL(socials.twitter!)}
+                    >
                       <Ionicons name="logo-twitter" size={20} color="#1DA1F2" />
                       <Text style={[styles.socialText, { color: '#1DA1F2' }]}>Twitter/X</Text>
                     </TouchableOpacity>
@@ -285,6 +390,114 @@ export function DetailScreen({ route, navigation }: any) {
                 </View>
               </View>
             )}
+
+            {/* ─── FORUM JUAL BELI TIKET ─── */}
+            <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>🏷️ {t('forumJualBeli')}</Text>
+                {!forumDisabled && (
+                  <TouchableOpacity onPress={() => setShowTmForm(v => !v)}>
+                    <Ionicons name={showTmForm ? 'close-circle-outline' : 'add-circle-outline'} size={22} color={colors.accent} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {forumDisabled ? (
+                <Text style={[styles.disabledText, { color: colors.textSubtle }]}>
+                  {past ? t('forumDisabled') : t('forumDisabledRumor')}
+                </Text>
+              ) : showTmForm ? (
+                <View style={{ gap: 8 }}>
+                  {/* Jual / Beli toggle */}
+                  <View style={styles.tmTypeRow}>
+                    {(['jual', 'beli'] as const).map(tp => (
+                      <TouchableOpacity
+                        key={tp}
+                        style={[styles.tmTypeBtn, { borderColor: tmType === tp ? colors.accent : colors.border, backgroundColor: tmType === tp ? colors.accent + '22' : 'transparent' }]}
+                        onPress={() => setTmType(tp)}
+                      >
+                        <Text style={[styles.tmTypeBtnText, { color: tmType === tp ? colors.accent : colors.textMuted }]}>
+                          {tp === 'jual' ? `🎫 ${t('jual')}` : `🔍 ${t('beli')}`}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('namaKamu')} placeholderTextColor={colors.textSubtle} value={tmName} onChangeText={setTmName} />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('kategoriTiket')} placeholderTextColor={colors.textSubtle} value={tmCategory} onChangeText={setTmCategory} />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('jumlah')} placeholderTextColor={colors.textSubtle} value={tmQty} onChangeText={setTmQty} keyboardType="number-pad" />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('hargaPerTiket')} placeholderTextColor={colors.textSubtle} value={tmPrice} onChangeText={setTmPrice} />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('kontakWA')} placeholderTextColor={colors.textSubtle} value={tmContact} onChangeText={setTmContact} />
+                  <TextInput style={[styles.input, styles.textarea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('catatan')} placeholderTextColor={colors.textSubtle} value={tmNote} onChangeText={setTmNote} multiline />
+                  <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.accent }]} onPress={handlePostListing}>
+                    <Text style={styles.sendBtnText}>{t('postingListing')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {listings.length === 0 ? (
+                <Text style={[styles.emptyInline, { color: colors.textSubtle }]}>{t('belumAdaListing')}</Text>
+              ) : (
+                listings.map(l => (
+                  <View key={l.uid} style={[styles.listingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                    <View style={styles.listingHeader}>
+                      <View style={[styles.tmBadge, { backgroundColor: l.type === 'jual' ? colors.confirmed + '22' : colors.accent + '22' }]}>
+                        <Text style={[styles.tmBadgeText, { color: l.type === 'jual' ? colors.confirmed : colors.accent }]}>
+                          {l.type === 'jual' ? '🎫 Jual' : '🔍 Beli'}
+                        </Text>
+                      </View>
+                      <Text style={[styles.listingName, { color: colors.text }]}>{l.name}</Text>
+                      <Text style={[styles.listingTime, { color: colors.textSubtle }]}>{timeAgo(l.date)}</Text>
+                    </View>
+                    <Text style={[styles.listingDetail, { color: colors.textMuted }]}>
+                      {l.category} · {l.qty}x {l.price ? `· ${l.price}` : ''}
+                    </Text>
+                    <Text style={[styles.listingContact, { color: colors.accent }]}>📞 {l.contact}</Text>
+                    {l.note ? <Text style={[styles.listingNote, { color: colors.textSubtle }]}>{l.note}</Text> : null}
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* ─── CARI TEMAN NONTON ─── */}
+            <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>👥 {t('cariTemanNonton')}</Text>
+                {!forumDisabled && (
+                  <TouchableOpacity onPress={() => setShowGbForm(v => !v)}>
+                    <Ionicons name={showGbForm ? 'close-circle-outline' : 'add-circle-outline'} size={22} color={colors.accent} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={[styles.cardSub, { color: colors.textSubtle }]}>{t('cariTemanSubtitle')}</Text>
+
+              {forumDisabled ? (
+                <Text style={[styles.disabledText, { color: colors.textSubtle }]}>
+                  {past ? t('forumDisabled') : t('forumDisabledRumor')}
+                </Text>
+              ) : showGbForm ? (
+                <View style={{ gap: 8 }}>
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('namaKamu')} placeholderTextColor={colors.textSubtle} value={gbName} onChangeText={setGbName} />
+                  <TextInput style={[styles.input, styles.textarea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('cariTemanPlaceholder')} placeholderTextColor={colors.textSubtle} value={gbNote} onChangeText={setGbNote} multiline />
+                  <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.accent }]} onPress={handlePostGroupBuying}>
+                    <Text style={styles.sendBtnText}>{t('postCariTeman')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {posts.length === 0 ? (
+                <Text style={[styles.emptyInline, { color: colors.textSubtle }]}>{t('belumAdaCariTeman')}</Text>
+              ) : (
+                posts.map(p => (
+                  <View key={p.uid} style={[styles.listingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                    <View style={styles.listingHeader}>
+                      <Text style={[styles.listingName, { color: colors.text }]}>👤 {p.name}</Text>
+                      <Text style={[styles.listingTime, { color: colors.textSubtle }]}>{timeAgo(p.date)}</Text>
+                    </View>
+                    {p.note ? <Text style={[styles.listingNote, { color: colors.textMuted }]}>{p.note}</Text> : null}
+                  </View>
+                ))
+              )}
+            </View>
 
             {/* Sources */}
             {concert.sources.length > 0 && (
@@ -300,7 +513,7 @@ export function DetailScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* SETLIST TAB */}
+        {/* ─── SETLIST TAB ─── */}
         {tab === 'setlist' && (
           <View style={styles.tabContent}>
             {setlist.length === 0 ? (
@@ -318,7 +531,7 @@ export function DetailScreen({ route, navigation }: any) {
                 )}
                 {setlist.map((s, i) => (
                   <View key={i} style={[styles.setlistRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                    <Text style={[styles.setlistNum, { color: colors.textSubtle }]}>{i+1}</Text>
+                    <Text style={[styles.setlistNum, { color: colors.textSubtle }]}>{i + 1}</Text>
                     <Text style={[styles.setlistSong, { color: colors.text }]} numberOfLines={1}>{s.song}</Text>
                     {s.prediction && (
                       <View style={[styles.predBadge, { backgroundColor: colors.rumor + '22' }]}>
@@ -332,38 +545,46 @@ export function DetailScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* DISKUSI TAB */}
+        {/* ─── DISKUSI TAB ─── */}
         {tab === 'diskusi' && (
           <View style={styles.tabContent}>
-            {/* Add comment */}
             <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
               <Text style={[styles.cardTitle, { color: colors.text }]}>💬 {t('discussion')}</Text>
-              {replyTo && (
-                <View style={[styles.replyPreview, { backgroundColor: colors.inputBg, borderLeftColor: colors.accent }]}>
-                  <Text style={[styles.replyPreviewText, { color: colors.textMuted }]} numberOfLines={1}>↩ {replyTo.author}: {replyTo.text}</Text>
-                  <TouchableOpacity onPress={() => setReplyTo(null)}>
-                    <Ionicons name="close" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
+
+              {past ? (
+                <View style={[styles.disabledBox, { backgroundColor: colors.pastBg }]}>
+                  <Text style={[styles.disabledText, { color: colors.past }]}>{t('diskusiDisabled')}</Text>
                 </View>
+              ) : (
+                <>
+                  {replyTo && (
+                    <View style={[styles.replyPreview, { backgroundColor: colors.inputBg, borderLeftColor: colors.accent }]}>
+                      <Text style={[styles.replyPreviewText, { color: colors.textMuted }]} numberOfLines={1}>↩ {replyTo.author}: {replyTo.text}</Text>
+                      <TouchableOpacity onPress={() => setReplyTo(null)}>
+                        <Ionicons name="close" size={14} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                    placeholder={t('name')}
+                    placeholderTextColor={colors.textSubtle}
+                    value={commentAuthor}
+                    onChangeText={setCommentAuthor}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.textarea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                    placeholder={t('writeComment')}
+                    placeholderTextColor={colors.textSubtle}
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    multiline
+                  />
+                  <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.accent }]} onPress={handleSendComment}>
+                    <Text style={styles.sendBtnText}>{t('send')}</Text>
+                  </TouchableOpacity>
+                </>
               )}
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
-                placeholder={t('name')}
-                placeholderTextColor={colors.textSubtle}
-                value={commentAuthor}
-                onChangeText={setCommentAuthor}
-              />
-              <TextInput
-                style={[styles.input, styles.textarea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
-                placeholder={t('writeComment')}
-                placeholderTextColor={colors.textSubtle}
-                value={commentText}
-                onChangeText={setCommentText}
-                multiline
-              />
-              <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.accent }]} onPress={handleSendComment}>
-                <Text style={styles.sendBtnText}>{t('send')}</Text>
-              </TouchableOpacity>
             </View>
 
             {comments.length === 0 ? (
@@ -393,24 +614,25 @@ export function DetailScreen({ route, navigation }: any) {
                     </TouchableOpacity>
                   </View>
                   <Text style={[styles.commentText, { color: colors.textMuted }]}>{c.text}</Text>
-                  <TouchableOpacity onPress={() => setReplyTo({ author: c.author, text: c.text })}>
-                    <Text style={[styles.replyBtn, { color: colors.accent }]}>↩ {t('reply')}</Text>
-                  </TouchableOpacity>
+                  {!past && (
+                    <TouchableOpacity onPress={() => setReplyTo({ author: c.author, text: c.text })}>
+                      <Text style={[styles.replyBtn, { color: colors.accent }]}>↩ {t('reply')}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))
             )}
           </View>
         )}
 
-        {/* REVIEW TAB */}
+        {/* ─── REVIEW TAB ─── */}
         {tab === 'review' && (
           <View style={styles.tabContent}>
-            {/* Avg rating */}
             {reviews.length > 0 && (
               <View style={[styles.card, { backgroundColor: colors.surfaceElevated, alignItems: 'center' }]}>
                 <Text style={[styles.avgRatingNum, { color: colors.accent }]}>{avgRating}</Text>
                 <View style={styles.starsRow}>
-                  {[1,2,3,4,5].map(s => (
+                  {[1, 2, 3, 4, 5].map(s => (
                     <Ionicons key={s} name={s <= Math.round(avgRating) ? 'star' : 'star-outline'} size={20} color={colors.rumor} />
                   ))}
                 </View>
@@ -418,13 +640,12 @@ export function DetailScreen({ route, navigation }: any) {
               </View>
             )}
 
-            {/* Write review */}
             {past ? (
               !hasReviewed ? (
                 <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
                   <Text style={[styles.cardTitle, { color: colors.text }]}>⭐ {t('writeReview')}</Text>
                   <View style={styles.starsRow}>
-                    {[1,2,3,4,5].map(s => (
+                    {[1, 2, 3, 4, 5].map(s => (
                       <TouchableOpacity key={s} onPress={() => setReviewRating(s)}>
                         <Ionicons name={s <= reviewRating ? 'star' : 'star-outline'} size={28} color={colors.rumor} />
                       </TouchableOpacity>
@@ -460,7 +681,42 @@ export function DetailScreen({ route, navigation }: any) {
               </View>
             )}
 
-            {/* Reviews list */}
+            {/* ─── FOTO DARI FANS ─── */}
+            <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>📸 {t('fotoDariFans')}</Text>
+                <TouchableOpacity onPress={() => setShowFotoForm(v => !v)}>
+                  <Ionicons name={showFotoForm ? 'close-circle-outline' : 'add-circle-outline'} size={22} color={colors.accent} />
+                </TouchableOpacity>
+              </View>
+              {showFotoForm && (
+                <View style={[styles.disabledBox, { backgroundColor: colors.surfaceElevated }]}>
+                  <Text style={[styles.disabledText, { color: colors.textSubtle }]}>
+                    Upload foto fans tersedia di versi web: list-concert-tour.web.id
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.outlineBtn, { borderColor: colors.accent, marginTop: 8 }]}
+                    onPress={() => Linking.openURL(`https://www.list-concert-tour.web.id`)}
+                  >
+                    <Ionicons name="globe-outline" size={14} color={colors.accent} />
+                    <Text style={[styles.outlineBtnText, { color: colors.accent }]}>Buka Website</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {photos.length === 0 ? (
+                <Text style={[styles.emptyInline, { color: colors.textSubtle }]}>{t('belumAdaFoto')}</Text>
+              ) : (
+                <View style={styles.photoGrid}>
+                  {photos.map(p => (
+                    <View key={p.uid} style={styles.photoItem}>
+                      <Image source={{ uri: p.uri }} style={styles.photoThumb} resizeMode="cover" />
+                      <Text style={[styles.photoAuthor, { color: colors.textSubtle }]}>{p.author}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
             {reviews.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyEmoji}>⭐</Text>
@@ -476,7 +732,7 @@ export function DetailScreen({ route, navigation }: any) {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.commentAuthor, { color: colors.text }]}>{r.author}</Text>
                       <View style={styles.starsRow}>
-                        {[1,2,3,4,5].map(s => (
+                        {[1, 2, 3, 4, 5].map(s => (
                           <Ionicons key={s} name={s <= r.rating ? 'star' : 'star-outline'} size={12} color={colors.rumor} />
                         ))}
                       </View>
@@ -526,6 +782,8 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 14, fontWeight: '500' },
   card: { borderRadius: 14, padding: 16, gap: 10 },
   cardTitle: { fontSize: 15, fontWeight: '700' },
+  cardSub: { fontSize: 12, marginTop: -4 },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   catRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1 },
   catName: { fontSize: 14 },
   catPrice: { fontSize: 14, fontWeight: '600' },
@@ -533,6 +791,8 @@ const styles = StyleSheet.create({
   bigBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   outlineBtn: { borderRadius: 14, borderWidth: 1.5, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   outlineBtnText: { fontSize: 14, fontWeight: '600' },
+  spotifyBtn: { borderRadius: 14, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  spotifyBtnText: { fontSize: 14, fontWeight: '700' },
   voteRow: { flexDirection: 'row', gap: 12 },
   voteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, borderWidth: 1, paddingVertical: 12 },
   voteBtnText: { fontSize: 14, fontWeight: '600' },
@@ -555,24 +815,45 @@ const styles = StyleSheet.create({
   predText: { fontSize: 10, fontWeight: '600' },
   commentCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8, marginBottom: 8 },
   commentHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 15, fontWeight: '700' },
-  commentAuthor: { fontSize: 14, fontWeight: '600' },
-  commentDate: { fontSize: 11 },
-  commentText: { fontSize: 14, lineHeight: 20 },
+  avatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 14, fontWeight: '700' },
+  commentAuthor: { fontSize: 13, fontWeight: '600' },
+  commentDate: { fontSize: 11, marginTop: 2 },
+  commentText: { fontSize: 13, lineHeight: 20 },
   likeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   likeCount: { fontSize: 12 },
   replyBtn: { fontSize: 12, fontWeight: '600', marginTop: 4 },
-  replyPreview: { borderLeftWidth: 3, paddingLeft: 10, paddingVertical: 4, borderRadius: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  replyPreview: { borderLeftWidth: 3, paddingLeft: 10, paddingVertical: 6, borderRadius: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   replyPreviewText: { fontSize: 12, flex: 1 },
-  starsRow: { flexDirection: 'row', gap: 4, marginTop: 4, marginBottom: 4 },
-  avgRatingNum: { fontSize: 40, fontWeight: '800' },
-  reviewCount: { fontSize: 12 },
-  input: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  input: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14 },
   textarea: { minHeight: 80, textAlignVertical: 'top' },
-  sendBtn: { borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  sendBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  emptyState: { alignItems: 'center', paddingVertical: 40 },
-  emptyEmoji: { fontSize: 40, marginBottom: 12 },
-  emptyText: { fontSize: 14, textAlign: 'center' },
+  sendBtn: { borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  sendBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  avgRatingNum: { fontSize: 40, fontWeight: '800' },
+  starsRow: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  reviewCount: { fontSize: 12, marginTop: 4 },
+  emptyState: { alignItems: 'center', paddingVertical: 32, gap: 8 },
+  emptyEmoji: { fontSize: 36 },
+  emptyText: { fontSize: 14 },
+  emptyInline: { fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+  disabledBox: { borderRadius: 10, padding: 12 },
+  disabledText: { fontSize: 13, fontStyle: 'italic' },
+  // Ticket Market
+  tmTypeRow: { flexDirection: 'row', gap: 10 },
+  tmTypeBtn: { flex: 1, borderRadius: 10, borderWidth: 1.5, paddingVertical: 10, alignItems: 'center' },
+  tmTypeBtnText: { fontSize: 13, fontWeight: '600' },
+  tmBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  tmBadgeText: { fontSize: 11, fontWeight: '700' },
+  listingCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 6, marginTop: 8 },
+  listingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  listingName: { flex: 1, fontSize: 13, fontWeight: '600' },
+  listingTime: { fontSize: 11 },
+  listingDetail: { fontSize: 13 },
+  listingContact: { fontSize: 13, fontWeight: '600' },
+  listingNote: { fontSize: 12 },
+  // Fan Photos
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  photoItem: { width: (width - 80) / 3, gap: 4 },
+  photoThumb: { width: '100%', height: (width - 80) / 3, borderRadius: 8, backgroundColor: '#333' },
+  photoAuthor: { fontSize: 10, textAlign: 'center' },
 });

@@ -18,8 +18,7 @@ export function useSocialFeatures(concertId: string) {
       if (v) {
         try { setData(JSON.parse(v)); } catch {}
       } else {
-        // Seed with some random counts
-        const seed = { going: Math.floor(Math.random()*200)+10, interested: Math.floor(Math.random()*300)+20, myVote: null };
+        const seed = { going: 0, interested: 0, myVote: null };
         setData(seed);
         AsyncStorage.setItem(KEY, JSON.stringify(seed));
       }

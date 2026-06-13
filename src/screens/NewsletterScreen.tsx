@@ -67,26 +67,32 @@ export function NewsletterScreen() {
     }
     setFbLoading(true);
     try {
-      // Kirim via Formspree — langsung ke email tanpa konfigurasi tambahan
-      const res = await fetch('https://formspree.io/f/xzzbjbvp', {
+      // Kirim via EmailJS REST API — sama seperti di website
+      const categoryLabel = CATEGORIES.find(c => c.value === fbCategory)?.label || fbCategory;
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: fbName || 'Anonim',
-          email: fbEmail || 'tidak dicantumkan',
-          category: CATEGORIES.find(c => c.value === fbCategory)?.label || fbCategory,
-          message: fbMessage,
-          _replyto: fbEmail || 'no-reply@concertid.app',
-          _subject: `[ConcertID Mobile] ${CATEGORIES.find(c => c.value === fbCategory)?.label || fbCategory}`,
+          service_id: 'service_lq3pvsq',
+          template_id: 'template_w8grsoa',
+          user_id: 'Ph1AuCpm4gbC6zMw6',
+          template_params: {
+            from_name: fbName || 'Anonim',
+            from_email: fbEmail || 'tidak dicantumkan',
+            type: categoryLabel,
+            message: fbMessage,
+            sent_at: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+            has_photo: false,
+          },
         }),
       });
 
-      const json = await res.json();
-      if (res.ok && json.ok) {
+      if (res.ok) {
         setFbSent(true);
         setFbName(''); setFbEmail(''); setFbMessage(''); setFbCategory('saran-fitur');
       } else {
-        Alert.alert('Gagal', json.error || 'Pesan tidak terkirim. Coba lagi nanti.');
+        const text = await res.text();
+        Alert.alert('Gagal', text || 'Pesan tidak terkirim. Coba lagi nanti.');
       }
     } catch {
       Alert.alert('Gagal', 'Tidak bisa terhubung. Coba lagi nanti.');
