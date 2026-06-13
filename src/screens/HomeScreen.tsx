@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useWishlist } from '../hooks/useWishlist';
+import { useWishlist } from '../context/WishlistContext';
 import { SearchBar } from '../components/SearchBar';
 import { FilterBar } from '../components/FilterBar';
 import { SortPicker } from '../components/SortPicker';

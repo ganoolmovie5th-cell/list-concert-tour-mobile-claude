@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useWishlist } from '../hooks/useWishlist';
+import { useWishlist } from '../context/WishlistContext';
 import { HomeScreen } from '../screens/HomeScreen';
 import { WishlistScreen } from '../screens/WishlistScreen';
 import { CalendarScreen } from '../screens/CalendarScreen';

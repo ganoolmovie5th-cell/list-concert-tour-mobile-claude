@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useWishlist } from '../hooks/useWishlist';
+import { useWishlist } from '../context/WishlistContext';
 import { useSocialFeatures } from '../hooks/useSocialFeatures';
 import { useDiscussion } from '../hooks/useDiscussion';
 import { useReviews } from '../hooks/useReviews';

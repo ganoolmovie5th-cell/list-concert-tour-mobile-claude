@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useWishlist } from '../hooks/useWishlist';
+import { useWishlist } from '../context/WishlistContext';
 import { ConcertCard } from '../components/ConcertCard';
 import { Toast } from '../components/Toast';
 import { CONCERTS } from '../data/concerts';
@@ -41,7 +41,7 @@ export function WishlistScreen({ navigation }: any) {
           <Text style={[styles.emptySub, { color: colors.textSubtle }]}>{t('emptyWishlistSub')}</Text>
           <TouchableOpacity
             style={[styles.exploreBtn, { backgroundColor: colors.accent }]}
-            onPress={() => navigation.navigate('HomeTab')}
+            onPress={() => navigation.getParent()?.navigate('HomeTab')}
           >
             <Text style={styles.exploreBtnText}>{t('exploreConcer')}</Text>
           </TouchableOpacity>

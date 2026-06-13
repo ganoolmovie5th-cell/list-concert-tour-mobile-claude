@@ -5,6 +5,7 @@ import { StyleSheet } from 'react-native';
 import { enableScreens } from 'react-native-screens';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { LanguageProvider } from './src/context/LanguageContext';
+import { WishlistProvider } from './src/context/WishlistContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 
 enableScreens();
@@ -14,7 +15,9 @@ function App() {
     <GestureHandlerRootView style={styles.root}>
       <ThemeProvider>
         <LanguageProvider>
-          <AppNavigator />
+          <WishlistProvider>
+            <AppNavigator />
+          </WishlistProvider>
         </LanguageProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

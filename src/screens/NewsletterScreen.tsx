@@ -67,30 +67,26 @@ export function NewsletterScreen() {
     }
     setFbLoading(true);
     try {
-      // Kirim via EmailJS (tanpa buka app email)
-      const payload = {
-        service_id: 'service_listconcert',
-        template_id: 'template_feedback',
-        user_id: 'Ph1AuCpm4gbC6zMw6',
-        template_params: {
-          from_name: fbName || 'Anonim',
-          from_email: fbEmail || 'tidak dicantumkan',
+      // Kirim via Formspree — langsung ke email tanpa konfigurasi tambahan
+      const res = await fetch('https://formspree.io/f/xzzbjbvp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          name: fbName || 'Anonim',
+          email: fbEmail || 'tidak dicantumkan',
           category: CATEGORIES.find(c => c.value === fbCategory)?.label || fbCategory,
           message: fbMessage,
-        },
-      };
-
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+          _replyto: fbEmail || 'no-reply@concertid.app',
+          _subject: `[ConcertID Mobile] ${CATEGORIES.find(c => c.value === fbCategory)?.label || fbCategory}`,
+        }),
       });
 
-      if (res.ok) {
+      const json = await res.json();
+      if (res.ok && json.ok) {
         setFbSent(true);
         setFbName(''); setFbEmail(''); setFbMessage(''); setFbCategory('saran-fitur');
       } else {
-        Alert.alert('Gagal', 'Pesan tidak terkirim. Coba lagi nanti.');
+        Alert.alert('Gagal', json.error || 'Pesan tidak terkirim. Coba lagi nanti.');
       }
     } catch {
       Alert.alert('Gagal', 'Tidak bisa terhubung. Coba lagi nanti.');
@@ -115,9 +111,7 @@ export function NewsletterScreen() {
             {nlSent ? (
               <View style={[styles.successBox, { backgroundColor: colors.confirmedBg }]}>
                 <Ionicons name="checkmark-circle" size={22} color={colors.confirmed} />
-                <Text style={[styles.successText, { color: colors.confirmed }]}>
-                  🎉 Berhasil! Cek inbox email kamu untuk konfirmasi.
-                </Text>
+                <Text style={[styles.successText, { color: colors.confirmed }]}>🎉 Berhasil!</Text>
               </View>
             ) : (
               <>
