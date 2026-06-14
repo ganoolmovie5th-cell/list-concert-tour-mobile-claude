@@ -16,7 +16,7 @@ import { useBeenThere } from '../hooks/useBeenThere';
 import { useTicketMarket, buildWaHref, formatRpDisplay } from '../hooks/useTicketMarket';
 import { useGroupBuying, buildWaHrefGB } from '../hooks/useGroupBuying';
 import { useFanPhotos } from '../hooks/useFanPhotos';
-import { ShareSheet } from '../components/ShareSheet';
+import { CountdownTimer } from '../components/CountdownTimer';
 import { Toast } from '../components/Toast';
 import { CONCERTS, SETLISTS, ARTIST_SOCIALS, SPOTIFY_ARTISTS } from '../data/concerts';
 import { getGoogleCalendarUrl, isPast, timeAgo } from '../utils/helpers';
@@ -258,6 +258,13 @@ export function DetailScreen({ route, navigation }: any) {
             </View>
           )}
         </View>
+
+        {/* Countdown — hanya untuk confirmed upcoming */}
+        {!past && !isRumor && (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+            <CountdownTimer rawDate={concert.rawDate} />
+          </View>
+        )}
 
         {/* Tabs */}
         <View style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
