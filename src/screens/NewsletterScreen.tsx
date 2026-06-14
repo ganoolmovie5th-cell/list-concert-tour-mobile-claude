@@ -317,7 +317,7 @@ export function NewsletterScreen() {
                   >
                     <Ionicons name="attach-outline" size={18} color={colors.textMuted} />
                     <Text style={[styles.attachBtnText, { color: colors.textMuted }]}>
-                      📎 Lampirkan foto (JPG/PNG · maks 5MB)
+                      📎 Upload foto
                     </Text>
                   </TouchableOpacity>
                 )}
