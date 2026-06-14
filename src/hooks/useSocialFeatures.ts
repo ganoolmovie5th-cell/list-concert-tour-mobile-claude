@@ -34,8 +34,9 @@ export function useSocialFeatures(concertId: string, isPastConcert = false) {
       const myVotes  = await getMyVotes();
 
       if (isPastConcert) {
-        // Dummy disabled — angka acak kalau belum ada, persist kalau sudah (sama dengan web)
-        if (going[concertId] == null) {
+        // Dummy disabled — angka acak kalau belum ada atau 0, persist kalau sudah > 0 (sama dengan web)
+        const needsSeed = going[concertId] == null || going[concertId] === 0;
+        if (needsSeed) {
           going[concertId]    = Math.floor(Math.random() * 900) + 100;
           interest[concertId] = Math.floor(Math.random() * 1500) + 300;
           await saveCounts(KEY_GOING, going);
