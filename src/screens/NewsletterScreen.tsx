@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -71,7 +72,7 @@ export function NewsletterScreen() {
     }
   };
 
-  // ─── Pilih foto untuk lampiran feedback ───
+  // ─── Pilih foto untuk lampiran feedback (terima sampai 5MB, compress di belakang) ───
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -81,26 +82,42 @@ export function NewsletterScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      // Resize ke max 400px dan quality 0.4 agar base64 di bawah 35KB
-      width: 400,
-      height: 400,
-      quality: 0.4,
-      base64: true,
+      quality: 1,      // terima full quality — compress dilakukan sendiri
+      base64: false,   // ambil URI dulu, bukan base64 langsung
       exif: false,
     });
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      // Estimasi ukuran base64: panjang string / 1.37 ≈ bytes
-      // Max 50KB payload total, foto aman di bawah 30KB base64
-      const b64 = asset.base64 || '';
-      const estimatedKB = (b64.length * 0.75) / 1024;
-      if (estimatedKB > 35) {
-        // Terlalu besar meski sudah compress — reject
-        Alert.alert('Foto terlalu besar', 'Pilih foto yang lebih kecil atau crop lebih kecil. Maks ~35KB setelah kompresi.');
-        return;
-      }
-      setFbPhoto(b64 || null);
+      const uri = result.assets[0].uri;
+      // Compress iteratif: resize ke max 600px, turunkan quality sampai <= 30KB
+      const b64 = await compressToLimit(uri, 30);
+      setFbPhoto(b64);
     }
+  };
+
+  // Compress URI foto secara iteratif sampai base64 <= targetKB
+  // Menggunakan expo-image-manipulator (resize + compress)
+  const compressToLimit = async (uri: string, targetKB: number): Promise<string> => {
+    const qualities = [0.7, 0.5, 0.35, 0.2];
+    const maxWidth  = 600;
+
+    for (const q of qualities) {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: maxWidth } }],
+        { compress: q, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+      );
+      const b64 = manipResult.base64 || '';
+      const kb  = (b64.length * 0.75) / 1024;
+      if (kb <= targetKB) return b64;
+    }
+
+    // Kalau masih besar, coba resize lebih kecil lagi dengan quality terendah
+    const last = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 300 } }],
+      { compress: 0.15, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+    );
+    return last.base64 || '';
   };
 
   // ─── Kirim feedback via EmailJS REST API ───
@@ -113,18 +130,8 @@ export function NewsletterScreen() {
     try {
       const categoryLabel = CATEGORIES.find(c => c.value === fbCategory)?.label?.replace(/^[^\s]+\s/, '') || fbCategory;
 
-      // Hitung estimasi total payload size — EmailJS limit 50KB
-      // base64: 1 byte ≈ 1.37 karakter base64
-      const photoB64 = fbPhoto || '';
-      const estimatedPhotoKB = (photoB64.length * 0.75) / 1024;
-      // Jika foto > 20KB setelah compress, drop foto dari payload agar tidak exceed limit
-      const safePhoto = estimatedPhotoKB <= 20 ? photoB64 : '';
-      if (photoB64 && !safePhoto) {
-        Alert.alert(
-          'Foto terlalu besar',
-          'Foto tidak dapat dilampirkan (melebihi batas EmailJS 50KB). Pesan tetap dikirim tanpa foto.',
-        );
-      }
+      // Foto sudah di-compress ke <= 30KB saat dipilih — langsung pakai
+      const safePhoto = fbPhoto || '';
 
       const payload = {
         service_id:    EMAILJS_SERVICE_ID,
