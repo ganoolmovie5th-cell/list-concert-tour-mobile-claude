@@ -17,6 +17,7 @@ import { useTicketMarket, buildWaHref, formatRpDisplay } from '../hooks/useTicke
 import { useGroupBuying, buildWaHrefGB } from '../hooks/useGroupBuying';
 import { useFanPhotos } from '../hooks/useFanPhotos';
 import { CountdownTimer } from '../components/CountdownTimer';
+import { ShareSheet } from '../components/ShareSheet';
 import { Toast } from '../components/Toast';
 import { CONCERTS, SETLISTS, ARTIST_SOCIALS, SPOTIFY_ARTISTS } from '../data/concerts';
 import { getGoogleCalendarUrl, isPast, timeAgo } from '../utils/helpers';
