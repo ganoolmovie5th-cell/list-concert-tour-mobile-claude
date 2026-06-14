@@ -81,12 +81,17 @@ const Storage = {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        apikey:        SUPA_KEY,
-        Authorization: `Bearer ${SUPA_KEY}`,
+        'apikey':         SUPA_KEY,
+        'Authorization':  `Bearer ${SUPA_KEY}`,
+        'Content-Type':   blob.type || 'image/jpeg',
+        'Cache-Control':  'max-age=3600',
       },
       body: blob,
     });
-    if (!res.ok) throw new Error(`Upload gagal: HTTP ${res.status}`);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`Upload gagal (${res.status}): ${errText}`);
+    }
     return `${SUPA_URL}/storage/v1/object/public/${bucket}/${path}`;
   },
 

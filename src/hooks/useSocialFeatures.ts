@@ -43,18 +43,21 @@ export function useSocialFeatures(concertId: string, isPastConcert = false) {
       const uid = await getDeviceUID();
 
       if (isPastConcert) {
-        // Past: dummy dari hash, tidak sync Supabase
-        const ls = await lsGetCounts(KEY_GOING);
-        if (!ls[concertId] || ls[concertId] === 0) {
-          const seed = pastSeed(concertId);
-          const li   = await lsGetCounts(KEY_INTEREST);
-          ls[concertId] = seed.going;
-          li[concertId] = seed.interested;
-          await lsSaveCounts(KEY_GOING, ls);
-          await lsSaveCounts(KEY_INTEREST, li);
-        }
-        const li = await lsGetCounts(KEY_INTEREST);
-        if (!cancelled) setData({ going: ls[concertId], interested: li[concertId], myVote: null });
+        // Past: tampilkan dummy seed dulu, lalu async fetch real count dari Supabase
+        // Jika Supabase count > 0, pakai angka real. Kalau 0, tetap pakai dummy.
+        // Mirror dari features.js web
+        const seed = pastSeed(concertId);
+        if (!cancelled) setData({ going: seed.going, interested: seed.interested, myVote: null });
+
+        try {
+          const rows       = await DB.select('concert_votes',
+            `concert_id=eq.${encodeURIComponent(concertId)}&select=type`);
+          const realGoing      = rows.filter((r: any) => r.type === 'going').length;
+          const realInterested = rows.filter((r: any) => r.type === 'interested').length;
+          const g = realGoing      > 0 ? realGoing      : seed.going;
+          const i = realInterested > 0 ? realInterested : seed.interested;
+          if (!cancelled) setData({ going: g, interested: i, myVote: null });
+        } catch { /* tetap pakai dummy */ }
         return;
       }
 
