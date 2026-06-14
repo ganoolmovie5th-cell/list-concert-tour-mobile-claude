@@ -10,7 +10,7 @@ Versi mobile dari [list-concert-tour.web.id](https://www.list-concert-tour.web.i
 - React Native + Expo SDK 54 + TypeScript
 - React Navigation 6 (Bottom Tabs + Stack)
 - AsyncStorage untuk persistensi lokal & fallback
-- expo-image-picker + expo-image-manipulator untuk upload foto
+- expo-image-picker + expo-image-manipulator + expo-file-system untuk upload foto
 - **Supabase** — sync data komunitas antar semua device (web & mobile)
 
 ---
@@ -38,9 +38,23 @@ Versi mobile dari [list-concert-tour.web.id](https://www.list-concert-tour.web.i
 - **AsyncStorage = fallback** — tetap berfungsi jika offline/error
 
 ### Catatan Teknis
-- Storage upload wajib set `Content-Type` header (sudah dihandle di `supabase.ts`)
+- Storage upload wajib set `Content-Type` header (sudah dihandle di `useFanPhotos.ts`)
+- **Upload foto pakai `FileSystem.uploadAsync`** (expo-file-system) — bukan `fetch + blob` (tidak support di RN)
 - Past concert: fetch real count dari Supabase, fallback dummy jika count = 0
 - `post_uid` unik per posting, `owner_uid` = device UID untuk cek kepemilikan
+- **Bucket `fan-photos` harus dibuat manual di Supabase Dashboard** (Storage → Buckets → New bucket, set Public = ON)
+- **Storage RLS policy** harus dibuat manual di SQL Editor:
+  ```sql
+  INSERT INTO storage.buckets (id, name, public)
+  VALUES ('fan-photos', 'fan-photos', true)
+  ON CONFLICT (id) DO UPDATE SET public = true;
+
+  CREATE POLICY "storage_fp_select" ON storage.objects
+  FOR SELECT USING (bucket_id = 'fan-photos');
+
+  CREATE POLICY "storage_fp_insert" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'fan-photos');
+  ```
 
 ---
 

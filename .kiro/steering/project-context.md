@@ -39,10 +39,27 @@ Versi mobile dari website [list-concert-tour.web.id](https://www.list-concert-to
 - Data web & mobile tersinkron karena pakai Supabase yang sama
 
 ### Catatan Teknis Penting
-- `Storage.upload` wajib set `Content-Type: blob.type || 'image/jpeg'` — sudah dihandle di `supabase.ts`
+- **Upload foto WAJIB pakai `FileSystem.uploadAsync`** (expo-file-system), bukan `fetch + blob`
+  - `fetch(localUri)` tidak bisa dapat Blob dari `file://` URI di React Native
+  - `FileSystem.uploadAsync` dengan `FileSystemUploadType.BINARY_CONTENT` adalah cara yang benar
+- `Storage.upload` di `supabase.ts` sudah dihapus — tidak support RN environment
 - Past concert going/interested: **fetch real dari Supabase dulu**, fallback dummy jika count = 0
 - `getDeviceUID()` async — hasilnya sama dengan `cid_uid` di localStorage web
 - `post_uid` = `genPostUID()` unik per posting, `owner_uid` = device UID untuk kepemilikan
+- **Bucket `fan-photos` harus dibuat manual di Supabase Dashboard**
+  - Storage → Buckets → New bucket → name: `fan-photos`, Public: ON
+- **Storage RLS policy harus dibuat manual di SQL Editor:**
+  ```sql
+  INSERT INTO storage.buckets (id, name, public)
+  VALUES ('fan-photos', 'fan-photos', true)
+  ON CONFLICT (id) DO UPDATE SET public = true;
+
+  CREATE POLICY "storage_fp_select" ON storage.objects
+  FOR SELECT USING (bucket_id = 'fan-photos');
+
+  CREATE POLICY "storage_fp_insert" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'fan-photos');
+  ```
 
 ---
 
@@ -106,9 +123,11 @@ src/
 - `ListHeaderComponent` = stats + hot carousel + filter + sort (tidak ada search di sini)
 
 ### Foto Upload (useFanPhotos)
-- Foto di-compress via `expo-image-manipulator` sebelum upload
-- Upload ke Supabase Storage, insert row ke `fan_photos`
+- Foto di-compress via `expo-image-manipulator` (max 1200px, quality 0.8) sebelum upload
+- Upload ke Supabase Storage via **`FileSystem.uploadAsync`** (bukan fetch+blob — tidak support di RN)
+- Insert row ke tabel `fan_photos` setelah upload berhasil
 - Fallback: simpan local URI jika upload gagal
+- Return `true` = sukses Supabase, `false` = fallback local
 
 ### Going/Interested Past
 - Tampilkan dummy seed hash dulu (immediate)
