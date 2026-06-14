@@ -13,8 +13,8 @@ import { useSocialFeatures } from '../hooks/useSocialFeatures';
 import { useDiscussion } from '../hooks/useDiscussion';
 import { useReviews } from '../hooks/useReviews';
 import { useBeenThere } from '../hooks/useBeenThere';
-import { useTicketMarket } from '../hooks/useTicketMarket';
-import { useGroupBuying } from '../hooks/useGroupBuying';
+import { useTicketMarket, buildWaHref, formatRpDisplay } from '../hooks/useTicketMarket';
+import { useGroupBuying, buildWaHrefGB } from '../hooks/useGroupBuying';
 import { useFanPhotos } from '../hooks/useFanPhotos';
 import { ShareSheet } from '../components/ShareSheet';
 import { Toast } from '../components/Toast';
@@ -38,8 +38,8 @@ export function DetailScreen({ route, navigation }: any) {
   const { comments, addComment, likeComment } = useDiscussion(concertId);
   const { reviews, hasReviewed, avgRating, addReview, likeReview } = useReviews(concertId);
   const { toggle: toggleBeenThere, hasAttended } = useBeenThere();
-  const { listings, addListing } = useTicketMarket(concertId);
-  const { posts, addPost } = useGroupBuying(concertId);
+  const { listings, ownerUid: tmOwnerUid, addListing, markSold, deleteListing, updateListing } = useTicketMarket(concertId);
+  const { posts, ownerUid: gbOwnerUid, addPost, deletePost: deleteGbPost, updatePost } = useGroupBuying(concertId);
   const { photos, addPhoto } = useFanPhotos(concertId);
 
   const [tab, setTab] = useState<Tab>('info');
@@ -65,11 +65,18 @@ export function DetailScreen({ route, navigation }: any) {
   const [tmContact, setTmContact] = useState('');
   const [tmNote, setTmNote] = useState('');
   const [showTmForm, setShowTmForm] = useState(false);
+  const [editTmUid, setEditTmUid] = useState<string | null>(null);
+  const [editTmFields, setEditTmFields] = useState<any>({});
 
   // Cari Teman Nonton
   const [gbName, setGbName] = useState('');
+  const [gbCategory, setGbCategory] = useState('');
+  const [gbContact, setGbContact] = useState('');
+  const [gbIg, setGbIg] = useState('');
   const [gbNote, setGbNote] = useState('');
   const [showGbForm, setShowGbForm] = useState(false);
+  const [editGbUid, setEditGbUid] = useState<string | null>(null);
+  const [editGbFields, setEditGbFields] = useState<any>({});
 
   // Foto Fans
   const [showFotoForm, setShowFotoForm] = useState(false);
@@ -161,7 +168,7 @@ export function DetailScreen({ route, navigation }: any) {
 
   const handlePostListing = async () => {
     if (!tmName.trim() || !tmContact.trim()) {
-      Alert.alert('Wajib diisi', 'Nama dan kontak harus diisi.');
+      Alert.alert('Wajib diisi', 'Nama dan kontak WA harus diisi.');
       return;
     }
     const ok = await addListing(tmType, tmName, tmCategory, parseInt(tmQty) || 1, tmPrice, tmContact, tmNote);
@@ -172,17 +179,34 @@ export function DetailScreen({ route, navigation }: any) {
     }
   };
 
+  const handleSaveTmEdit = async () => {
+    if (!editTmUid) return;
+    await updateListing(editTmUid, {
+      ...editTmFields,
+      price: (editTmFields.price || '').replace(/\./g, ''),
+    });
+    setEditTmUid(null); setEditTmFields({});
+    showToast('✅ Listing diperbarui!');
+  };
+
   const handlePostGroupBuying = async () => {
-    if (!gbName.trim()) {
-      Alert.alert('Wajib diisi', 'Nama harus diisi.');
+    if (!gbName.trim() || !gbContact.trim()) {
+      Alert.alert('Wajib diisi', 'Nama dan kontak WA harus diisi.');
       return;
     }
-    const ok = await addPost(gbName, gbNote);
+    const ok = await addPost(gbName, gbCategory, gbContact, gbIg, gbNote);
     if (ok) {
-      setGbName(''); setGbNote('');
+      setGbName(''); setGbCategory(''); setGbContact(''); setGbIg(''); setGbNote('');
       setShowGbForm(false);
       showToast('Post berhasil! 🎉');
     }
+  };
+
+  const handleSaveGbEdit = async () => {
+    if (!editGbUid) return;
+    await updatePost(editGbUid, editGbFields);
+    setEditGbUid(null); setEditGbFields({});
+    showToast('✅ Post diperbarui!');
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -435,7 +459,7 @@ export function DetailScreen({ route, navigation }: any) {
               <View style={styles.cardHeaderRow}>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>🏷️ {t('forumJualBeli')}</Text>
                 {!forumDisabled && (
-                  <TouchableOpacity onPress={() => setShowTmForm(v => !v)}>
+                  <TouchableOpacity onPress={() => { setShowTmForm(v => !v); setEditTmUid(null); }}>
                     <Ionicons name={showTmForm ? 'close-circle-outline' : 'add-circle-outline'} size={22} color={colors.accent} />
                   </TouchableOpacity>
                 )}
@@ -447,25 +471,24 @@ export function DetailScreen({ route, navigation }: any) {
                 </Text>
               ) : showTmForm ? (
                 <View style={{ gap: 8 }}>
-                  {/* Jual / Beli toggle */}
                   <View style={styles.tmTypeRow}>
                     {(['jual', 'beli'] as const).map(tp => (
-                      <TouchableOpacity
-                        key={tp}
+                      <TouchableOpacity key={tp}
                         style={[styles.tmTypeBtn, { borderColor: tmType === tp ? colors.accent : colors.border, backgroundColor: tmType === tp ? colors.accent + '22' : 'transparent' }]}
-                        onPress={() => setTmType(tp)}
-                      >
+                        onPress={() => setTmType(tp)}>
                         <Text style={[styles.tmTypeBtnText, { color: tmType === tp ? colors.accent : colors.textMuted }]}>
-                          {tp === 'jual' ? `🎫 ${t('jual')}` : `🔍 ${t('beli')}`}
+                          {tp === 'jual' ? `🎫 ${t('jual')} Tiket` : `🔍 ${t('beli')} Tiket`}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('namaKamu')} placeholderTextColor={colors.textSubtle} value={tmName} onChangeText={setTmName} />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="Nama kamu *" placeholderTextColor={colors.textSubtle} value={tmName} onChangeText={setTmName} />
                   <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('kategoriTiket')} placeholderTextColor={colors.textSubtle} value={tmCategory} onChangeText={setTmCategory} />
-                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('jumlah')} placeholderTextColor={colors.textSubtle} value={tmQty} onChangeText={setTmQty} keyboardType="number-pad" />
-                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('hargaPerTiket')} placeholderTextColor={colors.textSubtle} value={tmPrice} onChangeText={setTmPrice} />
-                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('kontakWA')} placeholderTextColor={colors.textSubtle} value={tmContact} onChangeText={setTmContact} />
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TextInput style={[styles.input, { flex: 1, backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="Jml tiket" placeholderTextColor={colors.textSubtle} value={tmQty} onChangeText={setTmQty} keyboardType="number-pad" />
+                    <TextInput style={[styles.input, { flex: 2, backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="Harga/tiket (contoh: 1.500.000)" placeholderTextColor={colors.textSubtle} value={tmPrice} onChangeText={setTmPrice} keyboardType="number-pad" />
+                  </View>
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="No WhatsApp * (contoh: 08123...)" placeholderTextColor={colors.textSubtle} value={tmContact} onChangeText={setTmContact} keyboardType="phone-pad" />
                   <TextInput style={[styles.input, styles.textarea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('catatan')} placeholderTextColor={colors.textSubtle} value={tmNote} onChangeText={setTmNote} multiline />
                   <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.accent }]} onPress={handlePostListing}>
                     <Text style={styles.sendBtnText}>{t('postingListing')}</Text>
@@ -476,24 +499,80 @@ export function DetailScreen({ route, navigation }: any) {
               {listings.length === 0 ? (
                 <Text style={[styles.emptyInline, { color: colors.textSubtle }]}>{t('belumAdaListing')}</Text>
               ) : (
-                listings.map(l => (
-                  <View key={l.uid} style={[styles.listingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                    <View style={styles.listingHeader}>
-                      <View style={[styles.tmBadge, { backgroundColor: l.type === 'jual' ? colors.confirmed + '22' : colors.accent + '22' }]}>
-                        <Text style={[styles.tmBadgeText, { color: l.type === 'jual' ? colors.confirmed : colors.accent }]}>
-                          {l.type === 'jual' ? '🎫 Jual' : '🔍 Beli'}
-                        </Text>
+                listings.map(l => {
+                  const waHref = buildWaHref(l.contact);
+                  const isOwner = l.ownerUid === tmOwnerUid;
+                  const soldLabel = l.type === 'jual' ? 'Terjual' : 'Ditemukan';
+                  const priceDisplay = formatRpDisplay(l.price);
+
+                  if (editTmUid === l.uid) {
+                    return (
+                      <View key={l.uid} style={[styles.listingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder, gap: 8 }]}>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TextInput style={[styles.input, { flex: 1, backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editTmFields.name ?? l.name} onChangeText={v => setEditTmFields((p: any) => ({ ...p, name: v }))} placeholder="Nama" placeholderTextColor={colors.textSubtle} />
+                          <TextInput style={[styles.input, { flex: 1, backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editTmFields.qty !== undefined ? String(editTmFields.qty) : String(l.qty)} onChangeText={v => setEditTmFields((p: any) => ({ ...p, qty: parseInt(v) || 1 }))} placeholder="Jml" placeholderTextColor={colors.textSubtle} keyboardType="number-pad" />
+                        </View>
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editTmFields.category ?? l.category} onChangeText={v => setEditTmFields((p: any) => ({ ...p, category: v }))} placeholder="Kategori" placeholderTextColor={colors.textSubtle} />
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editTmFields.price ?? l.price} onChangeText={v => setEditTmFields((p: any) => ({ ...p, price: v }))} placeholder="Harga" placeholderTextColor={colors.textSubtle} keyboardType="number-pad" />
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editTmFields.contact ?? l.contact} onChangeText={v => setEditTmFields((p: any) => ({ ...p, contact: v }))} placeholder="Kontak WA" placeholderTextColor={colors.textSubtle} />
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editTmFields.note ?? l.note} onChangeText={v => setEditTmFields((p: any) => ({ ...p, note: v }))} placeholder="Catatan" placeholderTextColor={colors.textSubtle} />
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity style={[styles.sendBtn, { flex: 1, backgroundColor: colors.accent }]} onPress={handleSaveTmEdit}><Text style={styles.sendBtnText}>💾 Simpan</Text></TouchableOpacity>
+                          <TouchableOpacity style={[styles.sendBtn, { flex: 1, backgroundColor: colors.surfaceElevated }]} onPress={() => setEditTmUid(null)}><Text style={[styles.sendBtnText, { color: colors.textMuted }]}>Batal</Text></TouchableOpacity>
+                        </View>
                       </View>
-                      <Text style={[styles.listingName, { color: colors.text }]}>{l.name}</Text>
-                      <Text style={[styles.listingTime, { color: colors.textSubtle }]}>{timeAgo(l.date)}</Text>
+                    );
+                  }
+
+                  return (
+                    <View key={l.uid} style={[styles.listingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: l.sold ? 0.6 : 1 }]}>
+                      <View style={styles.listingHeader}>
+                        <View style={[styles.tmBadge, { backgroundColor: l.type === 'jual' ? colors.confirmed + '22' : colors.accent + '22' }]}>
+                          <Text style={[styles.tmBadgeText, { color: l.type === 'jual' ? colors.confirmed : colors.accent }]}>
+                            {l.type === 'jual' ? '🎫 JUAL' : '🔍 BELI'}{l.sold ? ' ✓' : ''}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.listingName, { color: colors.text }]}>
+                            {l.name}{l.sold ? <Text style={{ color: '#4ade80', fontSize: 11 }}> ({soldLabel})</Text> : null}
+                          </Text>
+                          <Text style={[styles.listingDetail, { color: colors.textMuted }]}>
+                            {l.category} · {l.qty}x{priceDisplay ? ` · ${priceDisplay}` : ''}
+                          </Text>
+                        </View>
+                        {/* Emoji kontak — nomor tidak diekspos langsung */}
+                        {waHref && (
+                          <TouchableOpacity onPress={() => Linking.openURL(waHref)}>
+                            <Text style={{ fontSize: 22 }}>💬</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      {l.note ? <Text style={[styles.listingNote, { color: colors.textSubtle }]}>{l.note}</Text> : null}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                        <Text style={[styles.listingTime, { color: colors.textSubtle }]}>{timeAgo(l.date)}</Text>
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                          {l.sold ? (
+                            <Text style={{ fontSize: 12, color: '#4ade80' }}>✅ {soldLabel}</Text>
+                          ) : isOwner ? (
+                            <TouchableOpacity onPress={() => markSold(l.uid)}>
+                              <Text style={{ fontSize: 12, color: colors.confirmed }}>✓ Tandai {soldLabel}</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                          {isOwner && !l.sold && (
+                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                              <TouchableOpacity onPress={() => { setEditTmUid(l.uid); setEditTmFields({}); }}>
+                                <Text style={{ fontSize: 16 }}>✏️</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => Alert.alert('Hapus', 'Hapus listing ini?', [{ text: 'Batal' }, { text: 'Hapus', style: 'destructive', onPress: () => { deleteListing(l.uid); showToast('🗑️ Listing dihapus.', 'info'); } }])}>
+                                <Text style={{ fontSize: 16 }}>🗑️</Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
+                      </View>
                     </View>
-                    <Text style={[styles.listingDetail, { color: colors.textMuted }]}>
-                      {l.category} · {l.qty}x {l.price ? `· ${l.price}` : ''}
-                    </Text>
-                    <Text style={[styles.listingContact, { color: colors.accent }]}>📞 {l.contact}</Text>
-                    {l.note ? <Text style={[styles.listingNote, { color: colors.textSubtle }]}>{l.note}</Text> : null}
-                  </View>
-                ))
+                  );
+                })
               )}
             </View>
 
@@ -502,12 +581,14 @@ export function DetailScreen({ route, navigation }: any) {
               <View style={styles.cardHeaderRow}>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>👥 {t('cariTemanNonton')}</Text>
                 {!forumDisabled && (
-                  <TouchableOpacity onPress={() => setShowGbForm(v => !v)}>
+                  <TouchableOpacity onPress={() => { setShowGbForm(v => !v); setEditGbUid(null); }}>
                     <Ionicons name={showGbForm ? 'close-circle-outline' : 'add-circle-outline'} size={22} color={colors.accent} />
                   </TouchableOpacity>
                 )}
               </View>
-              <Text style={[styles.cardSub, { color: colors.textSubtle }]}>{t('cariTemanSubtitle')}</Text>
+              <Text style={[styles.cardSub, { color: colors.textSubtle }]}>
+                Cari teman nonton bareng! Kontak ditampilkan sebagai ikon — nomor tidak diekspos.
+              </Text>
 
               {forumDisabled ? (
                 <Text style={[styles.disabledText, { color: colors.textSubtle }]}>
@@ -515,7 +596,10 @@ export function DetailScreen({ route, navigation }: any) {
                 </Text>
               ) : showGbForm ? (
                 <View style={{ gap: 8 }}>
-                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('namaKamu')} placeholderTextColor={colors.textSubtle} value={gbName} onChangeText={setGbName} />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="Nama kamu *" placeholderTextColor={colors.textSubtle} value={gbName} onChangeText={setGbName} />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="Kategori tiket (CAT 1, VIP...)" placeholderTextColor={colors.textSubtle} value={gbCategory} onChangeText={setGbCategory} />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="No WhatsApp * (contoh: 08123...)" placeholderTextColor={colors.textSubtle} value={gbContact} onChangeText={setGbContact} keyboardType="phone-pad" />
+                  <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="@instagram (opsional)" placeholderTextColor={colors.textSubtle} value={gbIg} onChangeText={setGbIg} />
                   <TextInput style={[styles.input, styles.textarea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder={t('cariTemanPlaceholder')} placeholderTextColor={colors.textSubtle} value={gbNote} onChangeText={setGbNote} multiline />
                   <TouchableOpacity style={[styles.sendBtn, { backgroundColor: colors.accent }]} onPress={handlePostGroupBuying}>
                     <Text style={styles.sendBtnText}>{t('postCariTeman')}</Text>
@@ -526,15 +610,65 @@ export function DetailScreen({ route, navigation }: any) {
               {posts.length === 0 ? (
                 <Text style={[styles.emptyInline, { color: colors.textSubtle }]}>{t('belumAdaCariTeman')}</Text>
               ) : (
-                posts.map(p => (
-                  <View key={p.uid} style={[styles.listingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                    <View style={styles.listingHeader}>
-                      <Text style={[styles.listingName, { color: colors.text }]}>👤 {p.name}</Text>
-                      <Text style={[styles.listingTime, { color: colors.textSubtle }]}>{timeAgo(p.date)}</Text>
+                posts.map(p => {
+                  const waHref = buildWaHrefGB(p.contact);
+                  const igHref = p.ig ? `https://instagram.com/${p.ig}` : null;
+                  const isOwner = p.ownerUid === gbOwnerUid;
+
+                  if (editGbUid === p.uid) {
+                    return (
+                      <View key={p.uid} style={[styles.listingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder, gap: 8 }]}>
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editGbFields.name ?? p.name} onChangeText={v => setEditGbFields((x: any) => ({ ...x, name: v }))} placeholder="Nama" placeholderTextColor={colors.textSubtle} />
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editGbFields.category ?? p.category} onChangeText={v => setEditGbFields((x: any) => ({ ...x, category: v }))} placeholder="Kategori" placeholderTextColor={colors.textSubtle} />
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editGbFields.contact ?? p.contact} onChangeText={v => setEditGbFields((x: any) => ({ ...x, contact: v }))} placeholder="No WA" placeholderTextColor={colors.textSubtle} keyboardType="phone-pad" />
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editGbFields.ig ?? p.ig} onChangeText={v => setEditGbFields((x: any) => ({ ...x, ig: v.replace('@', '') }))} placeholder="@instagram" placeholderTextColor={colors.textSubtle} />
+                        <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} value={editGbFields.note ?? p.note} onChangeText={v => setEditGbFields((x: any) => ({ ...x, note: v }))} placeholder="Catatan" placeholderTextColor={colors.textSubtle} />
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity style={[styles.sendBtn, { flex: 1, backgroundColor: colors.accent }]} onPress={handleSaveGbEdit}><Text style={styles.sendBtnText}>💾 Simpan</Text></TouchableOpacity>
+                          <TouchableOpacity style={[styles.sendBtn, { flex: 1, backgroundColor: colors.surfaceElevated }]} onPress={() => setEditGbUid(null)}><Text style={[styles.sendBtnText, { color: colors.textMuted }]}>Batal</Text></TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View key={p.uid} style={[styles.listingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                      <View style={styles.listingHeader}>
+                        <View style={[styles.avatar, { backgroundColor: colors.accent + '33' }]}>
+                          <Text style={[styles.avatarText, { color: colors.accent }]}>{p.name[0]?.toUpperCase()}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.listingName, { color: colors.text }]}>{p.name}</Text>
+                          <Text style={[styles.listingDetail, { color: colors.textMuted }]}>{timeAgo(p.date)} · {p.category}</Text>
+                        </View>
+                        {/* Emoji kontak — WA & IG */}
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                          {waHref && (
+                            <TouchableOpacity onPress={() => Linking.openURL(waHref)}>
+                              <Text style={{ fontSize: 22 }}>💬</Text>
+                            </TouchableOpacity>
+                          )}
+                          {igHref && (
+                            <TouchableOpacity onPress={() => Linking.openURL(igHref)}>
+                              <Text style={{ fontSize: 22 }}>📷</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                      {p.note ? <Text style={[styles.listingNote, { color: colors.textMuted }]}>{p.note}</Text> : null}
+                      {isOwner && (
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 6, justifyContent: 'flex-end' }}>
+                          <TouchableOpacity onPress={() => { setEditGbUid(p.uid); setEditGbFields({}); }}>
+                            <Text style={{ fontSize: 16 }}>✏️</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => Alert.alert('Hapus', 'Hapus post ini?', [{ text: 'Batal' }, { text: 'Hapus', style: 'destructive', onPress: () => { deleteGbPost(p.uid); showToast('🗑️ Post dihapus.', 'info'); } }])}>
+                            <Text style={{ fontSize: 16 }}>🗑️</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
-                    {p.note ? <Text style={[styles.listingNote, { color: colors.textMuted }]}>{p.note}</Text> : null}
-                  </View>
-                ))
+                  );
+                })
               )}
             </View>
 
