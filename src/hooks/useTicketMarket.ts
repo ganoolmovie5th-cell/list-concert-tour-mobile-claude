@@ -1,8 +1,16 @@
+/**
+ * useTicketMarket — Forum Jual Beli Tiket
+ * Supabase primary, AsyncStorage fallback
+ * Mirror dari TicketMarket di features3.js web
+ */
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DB, getDeviceUID } from '../lib/supabase';
 
-const BASE_KEY   = 'cid_ticket_market';
-const OWNER_KEY  = 'cid_uid';
+const LS_KEY = 'cid_ticket_market';
+
+function lsKey(id: string) { return `${LS_KEY}_${id}`; }
+function genPostUID() { return 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
 export interface TicketListing {
   uid: string;
@@ -11,21 +19,11 @@ export interface TicketListing {
   name: string;
   category: string;
   qty: number;
-  price: string;       // angka murni, tanpa titik/Rp
+  price: string;
   contact: string;
   note: string;
   date: string;
   sold: boolean;
-}
-
-function getOwnerUID(): string {
-  // Sync — AsyncStorage tidak bisa di sini, jadi pakai key global sementara
-  // Sebenarnya dihandle di hook via state
-  return 'local';
-}
-
-function genPostUID(): string {
-  return 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 export function buildWaHref(contact: string): string | null {
@@ -45,39 +43,61 @@ export function formatRpDisplay(price: string): string {
   return `Rp ${num.toLocaleString('id-ID')}`;
 }
 
+async function lsGet(concertId: string): Promise<TicketListing[]> {
+  try { return JSON.parse((await AsyncStorage.getItem(lsKey(concertId))) || '[]'); } catch { return []; }
+}
+async function lsSave(concertId: string, list: TicketListing[]) {
+  await AsyncStorage.setItem(lsKey(concertId), JSON.stringify(list));
+}
+
+function mapRow(r: any): TicketListing {
+  return {
+    uid:      r.post_uid,
+    ownerUid: r.owner_uid,
+    type:     r.type,
+    name:     r.name,
+    category: r.category || 'TBA',
+    qty:      r.qty || 1,
+    price:    r.price || '',
+    contact:  r.contact,
+    note:     r.note || '',
+    date:     r.created_at,
+    sold:     r.sold || false,
+  };
+}
+
 export function useTicketMarket(concertId: string) {
-  const key = `${BASE_KEY}_${concertId}`;
-  const [listings, setListings] = useState<TicketListing[]>([]);
-  const [ownerUid, setOwnerUid] = useState('');
+  const [listings, setListings]   = useState<TicketListing[]>([]);
+  const [ownerUid, setOwnerUid]   = useState('');
 
   useEffect(() => {
-    // Load ownerUid
-    AsyncStorage.getItem(OWNER_KEY).then(uid => {
-      if (uid) { setOwnerUid(uid); return; }
-      const newUid = 'u_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      AsyncStorage.setItem(OWNER_KEY, newUid);
-      setOwnerUid(newUid);
-    });
-    // Load listings
-    AsyncStorage.getItem(key).then(v => {
-      if (v) { try { setListings(JSON.parse(v)); } catch {} }
-    });
-  }, [concertId]);
+    let cancelled = false;
+    (async () => {
+      const uid = await getDeviceUID();
+      if (!cancelled) setOwnerUid(uid);
 
-  const save = useCallback(async (next: TicketListing[]) => {
-    setListings(next);
-    await AsyncStorage.setItem(key, JSON.stringify(next));
-  }, [key]);
+      const local = await lsGet(concertId);
+      if (!cancelled && local.length) setListings(local);
+
+      try {
+        const rows = await DB.select('ticket_market',
+          `concert_id=eq.${encodeURIComponent(concertId)}&order=created_at.desc`);
+        const list = rows.map(mapRow);
+        if (!cancelled) { setListings(list); await lsSave(concertId, list); }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [concertId]);
 
   const addListing = useCallback(async (
     type: 'jual' | 'beli', name: string, category: string,
     qty: number, price: string, contact: string, note: string,
   ) => {
     if (!name.trim() || !contact.trim()) return false;
+    const uid     = await getDeviceUID();
+    const postUid = genPostUID();
     const item: TicketListing = {
-      uid:      genPostUID(),
-      ownerUid,
-      type,
+      uid: postUid, ownerUid: uid, type,
       name:     name.trim().slice(0, 30),
       category: (category.trim() || 'TBA').slice(0, 30),
       qty:      Math.min(qty || 1, 20),
@@ -87,23 +107,51 @@ export function useTicketMarket(concertId: string) {
       date:     new Date().toISOString(),
       sold:     false,
     };
-    await save([item, ...listings].slice(0, 50));
+
+    try {
+      await DB.insert('ticket_market', {
+        concert_id: concertId,
+        post_uid:   postUid,
+        owner_uid:  uid,
+        type, name: item.name, category: item.category,
+        qty: item.qty, price: item.price,
+        contact: item.contact, note: item.note,
+      });
+    } catch {}
+
+    const next = [item, ...listings].slice(0, 50);
+    setListings(next);
+    await lsSave(concertId, next);
     return true;
-  }, [listings, ownerUid, save]);
+  }, [listings, concertId]);
 
   const markSold = useCallback(async (uid: string) => {
     const next = listings.map(l => l.uid === uid ? { ...l, sold: true } : l);
-    await save(next);
-  }, [listings, save]);
+    setListings(next);
+    await lsSave(concertId, next);
+    try { await DB.update('ticket_market', `post_uid=eq.${uid}`, { sold: true }); } catch {}
+  }, [listings, concertId]);
 
   const deleteListing = useCallback(async (uid: string) => {
-    await save(listings.filter(l => l.uid !== uid));
-  }, [listings, save]);
+    const next = listings.filter(l => l.uid !== uid);
+    setListings(next);
+    await lsSave(concertId, next);
+    try { await DB.delete('ticket_market', `post_uid=eq.${uid}`); } catch {}
+  }, [listings, concertId]);
 
   const updateListing = useCallback(async (uid: string, fields: Partial<TicketListing>) => {
     const next = listings.map(l => l.uid === uid ? { ...l, ...fields } : l);
-    await save(next);
-  }, [listings, save]);
+    setListings(next);
+    await lsSave(concertId, next);
+    const mapped: any = {};
+    if (fields.name)     mapped.name     = fields.name;
+    if (fields.category) mapped.category = fields.category;
+    if (fields.qty)      mapped.qty      = fields.qty;
+    if (fields.price)    mapped.price    = (fields.price || '').replace(/\./g, '');
+    if (fields.contact)  mapped.contact  = fields.contact;
+    if ('note' in fields) mapped.note    = fields.note;
+    try { await DB.update('ticket_market', `post_uid=eq.${uid}`, mapped); } catch {}
+  }, [listings, concertId]);
 
   return { listings, ownerUid, addListing, markSold, deleteListing, updateListing };
 }

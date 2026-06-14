@@ -1,26 +1,37 @@
+/**
+ * useSocialFeatures — Going / Interested
+ * Supabase primary, AsyncStorage fallback
+ * Mirror dari SocialFeatures di features.js web
+ */
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DB, getDeviceUID } from '../lib/supabase';
 
 type VoteType = 'going' | 'interested' | null;
+interface SocialData { going: number; interested: number; myVote: VoteType }
 
-interface SocialData {
-  going: number;
-  interested: number;
-  myVote: VoteType;
-}
-
+// localStorage keys (fallback) — sama dengan web
 const KEY_GOING    = 'cid_going_v2';
 const KEY_INTEREST = 'cid_interest_v2';
 const KEY_MYVOTE   = 'cid_myvote_v2';
 
-async function getCounts(key: string): Promise<Record<string, number>> {
+async function lsGetCounts(key: string): Promise<Record<string, number>> {
   try { return JSON.parse((await AsyncStorage.getItem(key)) || '{}'); } catch { return {}; }
 }
-async function saveCounts(key: string, data: Record<string, number>) {
-  await AsyncStorage.setItem(key, JSON.stringify(data));
+async function lsSaveCounts(key: string, d: Record<string, number>) {
+  await AsyncStorage.setItem(key, JSON.stringify(d));
 }
-async function getMyVotes(): Promise<Record<string, VoteType>> {
+async function lsGetMyVotes(): Promise<Record<string, VoteType>> {
   try { return JSON.parse((await AsyncStorage.getItem(KEY_MYVOTE)) || '{}'); } catch { return {}; }
+}
+
+/** Dummy hash-based seed untuk konser past — konsisten dari concert ID */
+function pastSeed(concertId: string) {
+  const seed = concertId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return {
+    going:      (seed % 900) + 100,
+    interested: ((seed * 3) % 1500) + 300,
+  };
 }
 
 export function useSocialFeatures(concertId: string, isPastConcert = false) {
@@ -29,63 +40,104 @@ export function useSocialFeatures(concertId: string, isPastConcert = false) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const going    = await getCounts(KEY_GOING);
-      const interest = await getCounts(KEY_INTEREST);
-      const myVotes  = await getMyVotes();
+      const uid = await getDeviceUID();
 
       if (isPastConcert) {
-        // Dummy disabled — angka acak kalau belum ada atau 0, persist kalau sudah > 0 (sama dengan web)
-        const needsSeed = going[concertId] == null || going[concertId] === 0;
-        if (needsSeed) {
-          going[concertId]    = Math.floor(Math.random() * 900) + 100;
-          interest[concertId] = Math.floor(Math.random() * 1500) + 300;
-          await saveCounts(KEY_GOING, going);
-          await saveCounts(KEY_INTEREST, interest);
+        // Past: dummy dari hash, tidak sync Supabase
+        const ls = await lsGetCounts(KEY_GOING);
+        if (!ls[concertId] || ls[concertId] === 0) {
+          const seed = pastSeed(concertId);
+          const li   = await lsGetCounts(KEY_INTEREST);
+          ls[concertId] = seed.going;
+          li[concertId] = seed.interested;
+          await lsSaveCounts(KEY_GOING, ls);
+          await lsSaveCounts(KEY_INTEREST, li);
         }
-        if (!cancelled) setData({ going: going[concertId], interested: interest[concertId], myVote: null });
-      } else {
-        // Actual dari 0, bisa vote (confirmed & rumor)
-        if (going[concertId] == null) going[concertId] = 0;
-        if (interest[concertId] == null) interest[concertId] = 0;
-        if (!cancelled) setData({ going: going[concertId], interested: interest[concertId], myVote: myVotes[concertId] || null });
+        const li = await lsGetCounts(KEY_INTEREST);
+        if (!cancelled) setData({ going: ls[concertId], interested: li[concertId], myVote: null });
+        return;
+      }
+
+      // Confirmed / Rumor: Supabase primary
+      try {
+        const rows = await DB.select('concert_votes',
+          `concert_id=eq.${encodeURIComponent(concertId)}&select=type,device_uid`);
+        const going      = rows.filter((r: any) => r.type === 'going').length;
+        const interested = rows.filter((r: any) => r.type === 'interested').length;
+        const myVote     = (rows.find((r: any) => r.device_uid === uid)?.type ?? null) as VoteType;
+        if (!cancelled) setData({ going, interested, myVote });
+      } catch {
+        // fallback AsyncStorage
+        const g  = await lsGetCounts(KEY_GOING);
+        const i  = await lsGetCounts(KEY_INTEREST);
+        const mv = await lsGetMyVotes();
+        if (!cancelled) setData({
+          going:      g[concertId]  ?? 0,
+          interested: i[concertId]  ?? 0,
+          myVote:     mv[concertId] ?? null,
+        });
       }
     })();
     return () => { cancelled = true; };
   }, [concertId, isPastConcert]);
 
   const vote = useCallback(async (type: 'going' | 'interested'): Promise<VoteType> => {
-    if (isPastConcert) return null; // past tidak bisa vote
+    if (isPastConcert) return null;
+    const uid = await getDeviceUID();
 
-    const going    = await getCounts(KEY_GOING);
-    const interest = await getCounts(KEY_INTEREST);
-    const myVotes  = await getMyVotes();
+    try {
+      const existing = await DB.select('concert_votes',
+        `concert_id=eq.${encodeURIComponent(concertId)}&device_uid=eq.${uid}&type=eq.${type}`);
 
-    const prev = myVotes[concertId] || null;
-    if (going[concertId] == null)    going[concertId]    = 0;
-    if (interest[concertId] == null) interest[concertId] = 0;
+      if (existing.length > 0) {
+        // Undo vote
+        await DB.delete('concert_votes',
+          `concert_id=eq.${encodeURIComponent(concertId)}&device_uid=eq.${uid}&type=eq.${type}`);
+      } else {
+        // Hapus vote lain dulu, lalu insert baru
+        await DB.delete('concert_votes',
+          `concert_id=eq.${encodeURIComponent(concertId)}&device_uid=eq.${uid}`);
+        await DB.insert('concert_votes', { concert_id: concertId, device_uid: uid, type });
+      }
 
-    if (prev === type) {
-      // Undo vote
-      if (type === 'going')      going[concertId]    = Math.max(0, going[concertId] - 1);
-      if (type === 'interested') interest[concertId] = Math.max(0, interest[concertId] - 1);
-      delete myVotes[concertId];
-    } else {
-      // Undo prev jika ada
-      if (prev === 'going')      going[concertId]    = Math.max(0, going[concertId] - 1);
-      if (prev === 'interested') interest[concertId] = Math.max(0, interest[concertId] - 1);
-      // Tambah baru
-      if (type === 'going')      going[concertId]++;
-      if (type === 'interested') interest[concertId]++;
-      myVotes[concertId] = type;
+      // Fetch fresh counts
+      const rows       = await DB.select('concert_votes',
+        `concert_id=eq.${encodeURIComponent(concertId)}&select=type,device_uid`);
+      const going      = rows.filter((r: any) => r.type === 'going').length;
+      const interested = rows.filter((r: any) => r.type === 'interested').length;
+      const myVote     = (rows.find((r: any) => r.device_uid === uid)?.type ?? null) as VoteType;
+      setData({ going, interested, myVote });
+      return myVote;
+    } catch {
+      // fallback AsyncStorage
+      const g  = await lsGetCounts(KEY_GOING);
+      const i  = await lsGetCounts(KEY_INTEREST);
+      const mv = await lsGetMyVotes();
+      const prev = mv[concertId] || null;
+
+      if (g[concertId]  == null) g[concertId]  = 0;
+      if (i[concertId] == null) i[concertId] = 0;
+
+      if (prev === type) {
+        if (type === 'going')      g[concertId]  = Math.max(0, g[concertId]  - 1);
+        if (type === 'interested') i[concertId] = Math.max(0, i[concertId] - 1);
+        delete mv[concertId];
+      } else {
+        if (prev === 'going')      g[concertId]  = Math.max(0, g[concertId]  - 1);
+        if (prev === 'interested') i[concertId] = Math.max(0, i[concertId] - 1);
+        if (type === 'going')      g[concertId]++;
+        if (type === 'interested') i[concertId]++;
+        mv[concertId] = type;
+      }
+
+      await lsSaveCounts(KEY_GOING, g);
+      await lsSaveCounts(KEY_INTEREST, i);
+      await AsyncStorage.setItem(KEY_MYVOTE, JSON.stringify(mv));
+
+      const newVote = mv[concertId] || null;
+      setData({ going: g[concertId], interested: i[concertId], myVote: newVote });
+      return newVote;
     }
-
-    await saveCounts(KEY_GOING, going);
-    await saveCounts(KEY_INTEREST, interest);
-    await AsyncStorage.setItem(KEY_MYVOTE, JSON.stringify(myVotes));
-
-    const newVote = myVotes[concertId] || null;
-    setData({ going: going[concertId], interested: interest[concertId], myVote: newVote });
-    return newVote;
   }, [concertId, isPastConcert]);
 
   return { going: data.going, interested: data.interested, myVote: data.myVote, vote };
