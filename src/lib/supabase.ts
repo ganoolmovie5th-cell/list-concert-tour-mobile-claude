@@ -74,30 +74,16 @@ const DB = {
   },
 };
 
-/* ── Storage helper (untuk foto fans) ──────────────────────── */
+/* ── Storage helper — CATATAN untuk mobile ──────────────────
+   Di React Native, upload file lokal ke Supabase Storage TIDAK bisa
+   pakai fetch() + blob karena local file:// URI tidak support blob.
+   Gunakan FileSystem.uploadAsync dari expo-file-system (lihat useFanPhotos.ts)
+   Fungsi upload() di sini hanya dipakai dari web/browser environment.
+─────────────────────────────────────────────────────────── */
 const Storage = {
-  async upload(bucket: string, path: string, blob: Blob): Promise<string> {
-    const url = `${SUPA_URL}/storage/v1/object/${bucket}/${path}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'apikey':         SUPA_KEY,
-        'Authorization':  `Bearer ${SUPA_KEY}`,
-        'Content-Type':   blob.type || 'image/jpeg',
-        'Cache-Control':  'max-age=3600',
-      },
-      body: blob,
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      throw new Error(`Upload gagal (${res.status}): ${errText}`);
-    }
-    return `${SUPA_URL}/storage/v1/object/public/${bucket}/${path}`;
-  },
-
   publicUrl(bucket: string, path: string): string {
     return `${SUPA_URL}/storage/v1/object/public/${bucket}/${path}`;
   },
 };
 
-export { DB, Storage, SUPA_URL };
+export { DB, Storage, SUPA_URL, SUPA_KEY };
