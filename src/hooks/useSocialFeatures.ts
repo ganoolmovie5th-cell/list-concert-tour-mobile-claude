@@ -10,10 +10,10 @@ import { DB, getDeviceUID } from '../lib/supabase';
 type VoteType = 'going' | 'interested' | null;
 interface SocialData { going: number; interested: number; myVote: VoteType }
 
-// localStorage keys (fallback) — sama dengan web
-const KEY_GOING    = 'cid_going_v2';
-const KEY_INTEREST = 'cid_interest_v2';
-const KEY_MYVOTE   = 'cid_myvote_v2';
+// AsyncStorage keys (fallback) — HARUS sama persis dengan web (features.js)
+const KEY_GOING    = 'cid_going';
+const KEY_INTEREST = 'cid_interest';
+const KEY_MYVOTE   = 'cid_myvote';
 
 async function lsGetCounts(key: string): Promise<Record<string, number>> {
   try { return JSON.parse((await AsyncStorage.getItem(key)) || '{}'); } catch { return {}; }
