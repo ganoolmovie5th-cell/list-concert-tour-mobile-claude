@@ -1070,28 +1070,6 @@ export const CONCERTS: Concert[] = [
   },
 
   {
-    id: 'nancy-ajram-jakarta-2027',
-    artist: 'Nancy Ajram',
-    tour: 'Nancy Ajram Live in Jakarta 2027',
-    genre: 'pop', emoji: '🌟',
-    dates: ['30 Januari 2027'],
-    rawDate: new Date('2027-01-30'),
-    time: 'TBA',
-    venue: 'Istora Senayan',
-    city: 'Senayan, Jakarta Selatan',
-    promotor: 'Rajawali Indonesia Concert',
-    ticketPlatform: 'TBA',
-    ticketUrl: 'https://www.loket.com/event?keyword=Nancy+Ajram+Jakarta',
-    priceRange: 'Belum diumumkan',
-    priceMin: 0, priceMax: 0,
-    ticketCategories: [{ name: 'Semua kategori', price: 'Belum diumumkan' }],
-    confirmStatus: 'confirmed', hot: true,
-    description: 'Nancy Ajram, superstar pop Arab terbesar, tampil di Istora Senayan Jakarta pada 30 Januari 2027. Diumumkan oleh Rajawali Indonesia Concert via Instagram.',
-    sources: ['instagram.com/rajawaliindonesia'],
-    lineup: ['Nancy Ajram'],
-  },
-
-  {
     id: 'metallica-jakarta-rumor',
     artist: 'Metallica',
     tour: 'TBA',
