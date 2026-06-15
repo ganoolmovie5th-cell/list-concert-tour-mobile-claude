@@ -6,12 +6,12 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
 const VENUES = [
-  { name: 'Stadion Utama Gelora Bung Karno (GBK)', cap: '77.000+', area: 'Senayan' },
-  { name: 'Jakarta International Stadium (JIS)', cap: '82.000+', area: 'Tanjung Priok' },
-  { name: 'Indonesia Arena', cap: '16.000+', area: 'Senayan' },
-  { name: 'JIEXPO Kemayoran', cap: '20.000+', area: 'Kemayoran' },
-  { name: 'Balai Sarbini', cap: '2.000+', area: 'Semanggi' },
-  { name: 'Pulau Satu, Ancol', cap: '10.000+', area: 'Ancol' },
+  { name: 'Gelora Bung Karno (GBK)', cap: '~80.000', area: 'Senayan, Jakarta Pusat' },
+  { name: 'Jakarta International Stadium (JIS)', cap: '~82.000', area: 'Tanjung Priok, Jakarta Utara' },
+  { name: 'NICE PIK2', cap: 'Indoor Convention', area: 'Pantai Indah Kapuk 2, Tangerang' },
+  { name: 'ICE BSD City', cap: 'Multi-Hall Expo', area: 'BSD City, Tangerang Selatan' },
+  { name: 'Beach City International Stadium', cap: '~30.000', area: 'Ancol, Jakarta Utara' },
+  { name: 'Pantai Carnaval Ancol', cap: 'Festival Outdoor', area: 'Ancol, Jakarta Utara' },
 ];
 
 const PLATFORMS = [
