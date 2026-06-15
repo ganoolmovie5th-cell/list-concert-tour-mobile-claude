@@ -20,6 +20,70 @@ Versi mobile dari [list-concert-tour.web.id](https://www.list-concert-tour.web.i
 
 ---
 
+## Commit Convention (WAJIB setiap commit)
+
+**Setiap commit di repo ini HARUS menyertakan update:**
+
+1. **`README.md`** — update bagian yang relevan (fitur baru, perubahan, riwayat sync)
+2. **`.kiro/steering/project-context.md`** — update catatan teknis atau hal penting baru
+
+**Format commit message:**
+```
+<type>: <deskripsi singkat>
+
+Files: <file yang diubah selain README & steering>
+```
+
+**Type:**
+- `feat` — fitur baru
+- `fix` — bug fix
+- `sync` — sync data dari web
+- `perf` — performance
+- `chore` — maintenance
+- `docs` — hanya dokumentasi
+
+**Contoh commit yang BENAR:**
+```
+sync: concerts.ts mengikuti web — tambah konser baru, update ARTIST_SOCIALS
+
+Files: src/data/concerts.ts, src/screens/MoreScreen.tsx, README.md, .kiro/steering/project-context.md
+```
+
+---
+
+## Auto-Sync dari Web (WAJIB)
+
+**Mobile selalu mengikuti web. Setiap ada perubahan di web repo, langsung sync ke mobile:**
+
+| Perubahan di Web (`app.js`) | File Mobile yang Harus Diupdate | Keterangan |
+|---|---|---|
+| Tambah/edit/hapus konser | `src/data/concerts.ts` — CONCERTS | Copy + format TypeScript |
+| Edit `ARTIST_IMAGES` | `src/data/concerts.ts` — ARTIST_IMAGES | URL web tetap |
+| Edit `ARTIST_SOCIALS` | `src/data/concerts.ts` — ARTIST_SOCIALS | Pastikan handles konsisten |
+| Edit `SETLISTS` | `src/data/concerts.ts` — SETLISTS | Copy paste |
+| Edit `SPOTIFY_ARTISTS` | `src/data/concerts.ts` — SPOTIFY_ARTISTS | Copy paste |
+| Tambah/edit venue di `index.html` | `src/screens/MoreScreen.tsx` | Identik dengan web |
+| Update Supabase URL/key di `supabase.js` | `src/lib/supabase.ts` | Wajib sama |
+| Fix bug Supabase query di `features*.js` | Hook terkait di `src/hooks/` | Logic identik |
+| Update fallback localStorage keys | `src/hooks/useSocialFeatures.ts` | Keys harus identik |
+| Update copyright year | `src/constants/strings.ts` | `footerCopy` ID & EN |
+| Update EmailJS config | `src/screens/NewsletterScreen.tsx` | Service/template ID |
+
+**Prioritas sync (SEGERA, dalam commit yang sama atau berikutnya):**
+- 🔴 **Wajib langsung:** Data konser, Supabase config, bug fix query
+- 🟡 **Wajib segera:** ARTIST_SOCIALS, venues, copyright
+- 🟢 **Best effort:** SETLISTS, SPOTIFY_ARTISTS
+
+**Template commit sync:**
+```
+sync: <deskripsi perubahan dari web>
+
+Dari web commit: <commit hash/deskripsi web>
+Files: <file mobile yang diupdate>, README.md, .kiro/steering/project-context.md
+```
+
+---
+
 ## Source of Truth
 
 | Data | Source |
