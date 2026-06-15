@@ -57,7 +57,7 @@ Files: src/data/concerts.ts, src/screens/MoreScreen.tsx, README.md, .kiro/steeri
 
 | Perubahan di Web (`app.js`) | File Mobile yang Harus Diupdate | Keterangan |
 |---|---|---|
-| Tambah/edit/hapus konser | `src/data/concerts.ts` — CONCERTS | Copy + format TypeScript |
+| Tambah/edit/hapus konser | `src/data/concerts.ts` — CONCERTS (40 entries per Juni 2026) | Copy + format TypeScript |
 | Edit `ARTIST_IMAGES` | `src/data/concerts.ts` — ARTIST_IMAGES | URL web tetap |
 | Edit `ARTIST_SOCIALS` | `src/data/concerts.ts` — ARTIST_SOCIALS | Pastikan handles konsisten |
 | Edit `SETLISTS` | `src/data/concerts.ts` — SETLISTS | Copy paste |

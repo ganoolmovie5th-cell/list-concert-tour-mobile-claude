@@ -72,7 +72,7 @@ FOR INSERT WITH CHECK (bucket_id = 'fan-photos');
 ## ✨ Fitur
 
 ### 📊 Data Konser
-- **37 konser** 2025–2027 — **selalu sync dari web repo** (`app.js` = source of truth)
+- **40 konser** 2025–2027 — **selalu sync dari web repo** (`app.js` = source of truth)
 - Status: Confirmed ✅, Rumor 🔮, Past
 - Image dari URL web: `https://www.list-concert-tour.web.id/images/[id].jpeg`
 - Field lengkap: genre, harga, venue, promotor, lineup, sources
@@ -152,7 +152,7 @@ src/
 
 | Item | Status |
 |---|---|
-| Data konser 37 entries | ✅ Sync |
+| Data konser 40 entries | ✅ Sync |
 | `ARTIST_IMAGES` URL dari web | ✅ Sync |
 | `ARTIST_SOCIALS` handles (34 artis) | ✅ Sync |
 | `SETLISTS` + `SPOTIFY_ARTISTS` | ✅ Sync |
