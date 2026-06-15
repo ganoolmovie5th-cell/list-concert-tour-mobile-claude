@@ -153,3 +153,18 @@ const { going, ... } = useSocialFeatures(concertId, past);
 - Jangan pakai `cid_going_v2` dll (sudah difix ke `cid_going`)
 - Jangan re-install expo tanpa perlu
 - Jangan baca seluruh repo — baca file yang relevan saja
+
+---
+
+## Sync Checklist (saat update data dari web)
+
+Ketika ada update di `app.js` web, pastikan sync ke mobile:
+
+| Item | File Mobile | Catatan |
+|---|---|---|
+| CONCERTS array | `src/data/concerts.ts` | Copy paste + format TypeScript |
+| ARTIST_IMAGES | `src/data/concerts.ts` | URL web: `https://www.list-concert-tour.web.id/images/[id].jpeg` |
+| ARTIST_SOCIALS | `src/data/concerts.ts` | Pastikan handles konsisten |
+| SETLISTS | `src/data/concerts.ts` | Copy paste |
+| SPOTIFY_ARTISTS | `src/data/concerts.ts` | Copy paste |
+| Venue list | `src/screens/MoreScreen.tsx` | Harus identik dengan web |

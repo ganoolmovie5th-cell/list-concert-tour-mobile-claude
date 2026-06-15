@@ -148,7 +148,22 @@ src/
 
 ---
 
-## 🔄 Cara Update Data Konser
+## 🔄 Riwayat Sync Terakhir (Juni 2026)
+
+| Item | Status |
+|---|---|
+| Data konser 37 entries | ✅ Sync |
+| `ARTIST_IMAGES` URL dari web | ✅ Sync |
+| `ARTIST_SOCIALS` handles (34 artis) | ✅ Sync |
+| `SETLISTS` + `SPOTIFY_ARTISTS` | ✅ Sync |
+| Venue list di MoreScreen | ✅ Sync (6 venue identik dengan web) |
+| Fallback keys `cid_going/interest/myvote` | ✅ Sync (bukan `_v2`) |
+| Copyright year | ✅ 2026 |
+| `past` & `isRumor` deklarasi sebelum hooks | ✅ Fixed |
+
+---
+
+
 
 Data konser di mobile **selalu mengikuti web**. Jika ada perubahan di `app.js` web:
 
