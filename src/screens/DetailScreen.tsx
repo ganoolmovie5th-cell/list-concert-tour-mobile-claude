@@ -32,6 +32,11 @@ const GENRE_LABEL: Record<string, string> = {
 export function DetailScreen({ route, navigation }: any) {
   const { concertId } = route.params;
   const concert = CONCERTS.find(c => c.id === concertId);
+
+  // Hitung past & isRumor SEBELUM hooks — diperlukan oleh useSocialFeatures
+  const past = concert ? isPast(concert) : false;
+  const isRumor = concert ? concert.confirmStatus === 'rumor' : false;
+
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { toggle: toggleWishlist, isWishlisted } = useWishlist();
@@ -115,8 +120,7 @@ export function DetailScreen({ route, navigation }: any) {
     );
   }
 
-  const past = isPast(concert);
-  const isRumor = concert.confirmStatus === 'rumor';
+  // past & isRumor sudah dideklarasikan sebelum hooks di atas
   const forumDisabled = past || isRumor;
   const fotoEnabled = past; // Foto dari Fans: hanya untuk konser past (sudah berlangsung)
   const setlist = SETLISTS[concertId] || [];
