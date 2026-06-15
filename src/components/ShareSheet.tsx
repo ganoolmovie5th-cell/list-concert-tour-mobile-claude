@@ -25,8 +25,12 @@ export function ShareSheet({ visible, onClose, concert, onCopied }: ShareSheetPr
     onClose();
   };
 
-  const openTelegram = () => {
-    Linking.openURL(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
+  const openInstagram = () => {
+    Clipboard.setString(shareText);
+    onCopied?.();
+    Linking.openURL('instagram://app').catch(() => {
+      Linking.openURL('https://www.instagram.com');
+    });
     onClose();
   };
 
@@ -43,7 +47,7 @@ export function ShareSheet({ visible, onClose, concert, onCopied }: ShareSheetPr
 
   const buttons = [
     { icon: 'logo-whatsapp' as const, label: t('openWhatsApp'), color: '#25D366', onPress: openWhatsApp },
-    { icon: 'paper-plane-outline' as const, label: t('openTelegram'), color: '#0088cc', onPress: openTelegram },
+    { icon: 'logo-instagram' as const, label: t('openInstagram'), color: '#E1306C', onPress: openInstagram },
     { icon: 'share-outline' as const, label: t('nativeShare'), color: colors.accent, onPress: nativeShare },
     { icon: 'copy-outline' as const, label: t('copyLink'), color: colors.textMuted, onPress: copyLink },
   ];
