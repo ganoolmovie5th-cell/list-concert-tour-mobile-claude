@@ -52,7 +52,7 @@ export const LYRICS: Record<string, SongLyrics[]> = {
         { text: 'Boy with luv' },
         { text: 'Oh my, oh my, oh my' },
         { text: "Oh I'd like you just as you are" },
-        { text: 'How's your day? Oh tell me' },
+        { text: "How's your day? Oh tell me" },
         { text: "'Cause I care" },
         { text: "How's your night? Oh tell me" },
         { text: "'Cause I care" },
