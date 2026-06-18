@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
-import { VoteCountsProvider, useVoteCountsCtx } from '../context/VoteCountsContext';
+import { useVoteCountsCtx } from '../context/VoteCountsContext';
 import { FilterBar } from '../components/FilterBar';
 import { SortPicker } from '../components/SortPicker';
 import { ConcertCard } from '../components/ConcertCard';

@@ -43,11 +43,11 @@ function mapRow(r: any): GroupPost {
   return {
     uid:      r.post_uid,
     ownerUid: r.owner_uid,
-    name:     r.name,
+    name:     r.name     || 'Anonim',
     category: r.category || 'Semua kategori',
-    contact:  r.contact,
-    ig:       r.ig || '',
-    note:     r.note || '',
+    contact:  r.contact  || '',
+    ig:       r.ig       || '',
+    note:     r.note     || '',
     date:     r.created_at,
   };
 }

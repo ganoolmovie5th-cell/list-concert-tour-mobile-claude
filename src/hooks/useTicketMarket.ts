@@ -54,15 +54,15 @@ function mapRow(r: any): TicketListing {
   return {
     uid:      r.post_uid,
     ownerUid: r.owner_uid,
-    type:     r.type,
-    name:     r.name,
+    type:     r.type     || 'jual',
+    name:     r.name     || 'Anonim',
     category: r.category || 'TBA',
-    qty:      r.qty || 1,
-    price:    r.price || '',
-    contact:  r.contact,
-    note:     r.note || '',
+    qty:      r.qty      || 1,
+    price:    r.price    || '',
+    contact:  r.contact  || '',
+    note:     r.note     || '',
     date:     r.created_at,
-    sold:     r.sold || false,
+    sold:     r.sold     || false,
   };
 }
 
