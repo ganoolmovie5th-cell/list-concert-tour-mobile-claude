@@ -156,14 +156,16 @@ src/
 
 | Item | Status |
 |---|---|
-| Data konser 40 entries | ✅ Sync |
+| Data konser **44 entries** | ✅ Sync |
 | `ARTIST_IMAGES` URL dari web | ✅ Sync |
-| `ARTIST_SOCIALS` handles (34 artis) | ✅ Sync |
+| `ARTIST_SOCIALS` handles | ✅ Sync |
 | `SETLISTS` + `SPOTIFY_ARTISTS` | ✅ Sync |
-| Venue list di MoreScreen | ✅ Sync (6 venue identik dengan web) |
-| Fallback keys `cid_going/interest/myvote` | ✅ Sync (bukan `_v2`) |
-| Copyright year | ✅ 2026 |
+| Venue list di MoreScreen | ✅ Sync |
+| Fallback keys `cid_going/interest/myvote` | ✅ Sync |
+| Copyright year 2026 | ✅ Sync |
 | `past` & `isRumor` deklarasi sebelum hooks | ✅ Fixed |
+| `mapRow` null fallbacks (name, contact, type) | ✅ Fixed |
+| Unused `VoteCountsProvider` import | ✅ Cleaned |
 
 ---
 
@@ -171,28 +173,26 @@ src/
 
 | Fitur | File | Keterangan |
 |---|---|---|
-| Social Proof Going on Card | `ConcertCard.tsx`, `VoteCountsContext.tsx`, `useVoteCounts.ts` | Going count di setiap card, 1 DB call |
-| Push Notifications | `useNotifications.ts`, `WishlistContext.tsx` | Reminder H-30/H-7/H-1 saat wishlist |
-| Concert Check-in | `useConcertCheckin.ts`, `venueCoordinates.ts` | GPS validasi radius 1km, expo-location |
-| In-App Chat | `useInAppChat.ts`, `DetailScreen.tsx` | Chat per GB post, polling 10s |
-| Venue Seat Map | `seatMaps.ts`, `DetailScreen.tsx` | Denah & tips 7 venue utama Jakarta |
-| Concert Playlist | `DetailScreen.tsx` | Link Spotify playlist di detail konser |
-| Offline Mode | `useNetworkStatus.ts`, `OfflineBanner.tsx` | Banner + graceful degradation |
-| Story Template | `StoryCard.tsx` | Share story ke IG/WA/Telegram |
-| Karaoke Mode | `KaraokeScreen.tsx`, `lyrics.ts` | Lirik lagu per artis, fullscreen |
-| Offline Mode | `useNetworkStatus.ts` | Probe ke Supabase setiap 30s |
+| Social Proof Going on Card | `ConcertCard.tsx`, `VoteCountsContext.tsx` | 1 DB call untuk 44 konser |
+| Push Notifications | `useNotifications.ts`, `WishlistContext.tsx` | Reminder H-30/H-7/H-1 |
+| Concert Reminder | Auto via `WishlistContext` | Schedule saat wishlist |
+| In-App Chat | `useInAppChat.ts` | Chat per GB post, polling 10s |
+| Venue Seat Map | `seatMaps.ts`, `venueCoordinates.ts` | 7 venue Jakarta |
+| Concert Playlist | `DetailScreen.tsx` | Link Spotify dari DetailScreen |
+| Offline Mode | `useNetworkStatus.ts`, `OfflineBanner.tsx` | Probe tiap 30s |
+| Story Template | `StoryCard.tsx` | Share ke IG/WA/Telegram |
+| Karaoke Mode | `KaraokeScreen.tsx`, `lyrics.ts` | 8 artis, fullscreen |
+| Concert Check-in | `useConcertCheckin.ts` | GPS radius 1km |
 
-### New Supabase Tables (run di SQL Editor):
+### Supabase Tables Baru (run di SQL Editor):
 ```sql
 CREATE TABLE IF NOT EXISTS gb_chat (
-  id bigserial PRIMARY KEY, msg_uid text UNIQUE,
-  post_uid text NOT NULL, sender_uid text, sender_name text,
-  message text, created_at timestamptz DEFAULT now()
+  id bigserial PRIMARY KEY, msg_uid text UNIQUE, post_uid text NOT NULL,
+  sender_uid text, sender_name text, message text, created_at timestamptz DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS concert_checkins (
-  id bigserial PRIMARY KEY, concert_id text NOT NULL,
-  device_uid text NOT NULL, checked_in_at timestamptz,
-  lat float8, lng float8, verified boolean DEFAULT false,
+  id bigserial PRIMARY KEY, concert_id text NOT NULL, device_uid text NOT NULL,
+  checked_in_at timestamptz, lat float8, lng float8, verified boolean DEFAULT false,
   UNIQUE(concert_id, device_uid)
 );
 ```
