@@ -3,8 +3,10 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useVoteCountsCtx } from '../context/VoteCountsContext';
 import { Concert } from '../types';
 import { genreColor, isPast } from '../utils/helpers';
+import { fmtCount } from '../utils/helpers';
 
 interface ConcertCardProps {
   concert: Concert;
@@ -16,8 +18,10 @@ interface ConcertCardProps {
 export function ConcertCard({ concert, isWishlisted, onPress, onWishlist }: ConcertCardProps) {
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const { getCount } = useVoteCountsCtx();
   const past = isPast(concert);
   const gColor = genreColor(concert.genre, colors as unknown as Record<string, string>);
+  const { going } = getCount(concert.id);
 
   const statusColor = concert.confirmStatus === 'confirmed'
     ? (past ? colors.past : colors.confirmed)
@@ -69,6 +73,12 @@ export function ConcertCard({ concert, isWishlisted, onPress, onWishlist }: Conc
 
         <View style={styles.footer}>
           <Text style={[styles.price, { color: colors.accent }]} numberOfLines={1}>{concert.priceRange}</Text>
+          {going > 0 && (
+            <View style={[styles.goingBadge, { backgroundColor: colors.accent + '18' }]}>
+              <Ionicons name="checkmark-circle-outline" size={11} color={colors.accent} />
+              <Text style={[styles.goingText, { color: colors.accent }]}>{fmtCount(going)} {t('goingCount')}</Text>
+            </View>
+          )}
           {!past && concert.confirmStatus === 'confirmed' && (
             <View style={[styles.ctaBtn, { backgroundColor: colors.accent }]}>
               <Text style={styles.ctaText}>{t('buyTicket')}</Text>
@@ -97,8 +107,10 @@ const styles = StyleSheet.create({
   tour: { fontSize: 12, marginBottom: 10 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
   infoText: { fontSize: 12 },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 6, flexWrap: 'wrap' },
   price: { fontSize: 12, fontWeight: '600', flex: 1 },
+  goingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  goingText: { fontSize: 10, fontWeight: '600' },
   ctaBtn: { borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
   ctaText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });

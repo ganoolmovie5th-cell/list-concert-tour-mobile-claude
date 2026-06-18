@@ -113,6 +113,8 @@ Files: <file mobile yang diupdate>, README.md, .kiro/steering/project-context.md
 | `ticket_market` | `useTicketMarket` | Forum jual beli — sync |
 | `group_buying` | `useGroupBuying` | Cari teman nonton — sync |
 | `fan_photos` | `useFanPhotos` | Foto + Supabase Storage `fan-photos` |
+| `gb_chat` | `useInAppChat` | In-app chat per Group Buying post — polling 10s |
+| `concert_checkins` | `useConcertCheckin` | Check-in GPS, radius 1km dari venue |
 
 ### Strategi
 - **Supabase = primary**, **AsyncStorage = fallback** (offline/error)
@@ -191,6 +193,35 @@ const isRumor = concert ? concert.confirmStatus === 'rumor' : false;
 // Baru panggil hooks:
 const { going, ... } = useSocialFeatures(concertId, past);
 ```
+
+### Fitur Baru Juni 2026 — Catatan Teknis
+
+#### Push Notifications (expo-notifications)
+- Install: `expo-notifications ~0.29.14`, `expo-location ~18.0.9`
+- Lazy import: `try { Notifications = require('expo-notifications'); } catch {}` — tidak crash kalau belum install
+- Schedule reminders: H-30, H-7, H-1 — otomatis saat konser di-wishlist di `WishlistContext.tsx`
+- Cancel reminders: otomatis saat konser di-un-wishlist
+
+#### Concert Check-in (expo-location)
+- `useConcertCheckin.ts` + `venueCoordinates.ts` (koordinat 7 venue)
+- Lazy import `expo-location` — fallback tanpa GPS jika belum install
+- Supabase table: `concert_checkins` (run SQL di dashboard)
+- Untuk konser past: langsung allow tanpa GPS validation
+
+#### In-App Chat (useInAppChat.ts)
+- Polling setiap 10 detik (bukan WebSocket) — kompatibel dengan REST client
+- Supabase table: `gb_chat` (run SQL di dashboard)
+- State `activeChatPostUid` di DetailScreen mengontrol chat panel mana yang open
+
+#### VoteCounts Global Context
+- `VoteCountsContext` di `App.tsx` (level paling atas) — fetch semua counts 1x
+- `useVoteCountsCtx()` di `ConcertCard` — tidak ada individual fetch per card
+- Refresh otomatis setiap 5 menit
+
+#### Offline Mode
+- `useNetworkStatus` — probe Supabase HEAD request setiap 30s
+- `OfflineBanner` — slide down animation, shown di `HomeScreen.tsx`
+- Semua hooks sudah punya fallback AsyncStorage — offline mode otomatis
 
 ### Search di HomeScreen
 - `TextInput` search **di luar FlatList** — wajib, kalau di ListHeaderComponent keyboard tutup setiap keystroke

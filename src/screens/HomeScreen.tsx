@@ -8,14 +8,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
+import { VoteCountsProvider, useVoteCountsCtx } from '../context/VoteCountsContext';
 import { FilterBar } from '../components/FilterBar';
 import { SortPicker } from '../components/SortPicker';
 import { ConcertCard } from '../components/ConcertCard';
 import { ShareSheet } from '../components/ShareSheet';
 import { Toast } from '../components/Toast';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { CONCERTS } from '../data/concerts';
 import { filterConcerts, sortConcerts, isUpcoming } from '../utils/helpers';
 import { FilterType, SortOption, Concert } from '../types';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
 // ─── Static header (stats + hot carousel) — tidak berubah ───────────────────
 // Dibuat di luar HomeScreen agar tidak pernah di-remount
@@ -89,6 +92,8 @@ export function HomeScreen({ navigation }: any) {
   const { colors, isDark, toggle } = useTheme();
   const { lang, toggleLang, t } = useLanguage();
   const { wishlist, toggle: toggleWishlist, isWishlisted } = useWishlist();
+  const { fetchAll: refreshCounts } = useVoteCountsCtx();
+  const { isOnline } = useNetworkStatus();
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
@@ -112,8 +117,9 @@ export function HomeScreen({ navigation }: any) {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    refreshCounts();
     setTimeout(() => setRefreshing(false), 800);
-  }, []);
+  }, [refreshCounts]);
 
   const handleWishlist = useCallback(async (concert: Concert) => {
     const added = await toggleWishlist(concert.id);
@@ -150,6 +156,7 @@ export function HomeScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+      <OfflineBanner isOnline={isOnline} />
 
       {/* TopBar */}
       <View style={[styles.topBar, { borderBottomColor: colors.border }]}>

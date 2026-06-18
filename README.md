@@ -16,6 +16,8 @@ Versi mobile dari [list-concert-tour.web.id](https://www.list-concert-tour.web.i
 | Navigation | React Navigation 6 (Bottom Tabs + Stack) |
 | Local Storage | AsyncStorage (wishlist, fallback, device UID) |
 | Media | expo-image-picker + expo-image-manipulator + expo-file-system |
+| Notifications | expo-notifications (push notif + reminders H-7, H-1) |
+| Location | expo-location (concert check-in geolocation) |
 | Database | Supabase (PostgreSQL REST API) — sync web & mobile |
 | Storage | Supabase Storage (foto fans) |
 
@@ -38,6 +40,8 @@ Versi mobile dari [list-concert-tour.web.id](https://www.list-concert-tour.web.i
 | `ticket_market` | `useTicketMarket` | Forum jual beli tiket |
 | `group_buying` | `useGroupBuying` | Cari teman nonton |
 | `fan_photos` | `useFanPhotos` | Foto dari fans |
+| `gb_chat` | `useInAppChat` | In-app chat per Group Buying post (Juni 2026) |
+| `concert_checkins` | `useConcertCheckin` | Concert check-in geolocation (Juni 2026) |
 
 ### Strategi Data
 - **Supabase = primary** — sync antar web & mobile, antar semua device
@@ -160,6 +164,38 @@ src/
 | Fallback keys `cid_going/interest/myvote` | ✅ Sync (bukan `_v2`) |
 | Copyright year | ✅ 2026 |
 | `past` & `isRumor` deklarasi sebelum hooks | ✅ Fixed |
+
+---
+
+## 🆕 Fitur Baru (Juni 2026)
+
+| Fitur | File | Keterangan |
+|---|---|---|
+| Social Proof Going on Card | `ConcertCard.tsx`, `VoteCountsContext.tsx`, `useVoteCounts.ts` | Going count di setiap card, 1 DB call |
+| Push Notifications | `useNotifications.ts`, `WishlistContext.tsx` | Reminder H-30/H-7/H-1 saat wishlist |
+| Concert Check-in | `useConcertCheckin.ts`, `venueCoordinates.ts` | GPS validasi radius 1km, expo-location |
+| In-App Chat | `useInAppChat.ts`, `DetailScreen.tsx` | Chat per GB post, polling 10s |
+| Venue Seat Map | `seatMaps.ts`, `DetailScreen.tsx` | Denah & tips 7 venue utama Jakarta |
+| Concert Playlist | `DetailScreen.tsx` | Link Spotify playlist di detail konser |
+| Offline Mode | `useNetworkStatus.ts`, `OfflineBanner.tsx` | Banner + graceful degradation |
+| Story Template | `StoryCard.tsx` | Share story ke IG/WA/Telegram |
+| Karaoke Mode | `KaraokeScreen.tsx`, `lyrics.ts` | Lirik lagu per artis, fullscreen |
+| Offline Mode | `useNetworkStatus.ts` | Probe ke Supabase setiap 30s |
+
+### New Supabase Tables (run di SQL Editor):
+```sql
+CREATE TABLE IF NOT EXISTS gb_chat (
+  id bigserial PRIMARY KEY, msg_uid text UNIQUE,
+  post_uid text NOT NULL, sender_uid text, sender_name text,
+  message text, created_at timestamptz DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS concert_checkins (
+  id bigserial PRIMARY KEY, concert_id text NOT NULL,
+  device_uid text NOT NULL, checked_in_at timestamptz,
+  lat float8, lng float8, verified boolean DEFAULT false,
+  UNIQUE(concert_id, device_uid)
+);
+```
 
 ---
 

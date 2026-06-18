@@ -141,6 +141,42 @@ const strings = {
     belumAdaFoto: 'Belum ada foto. Upload fotomu dari konser ini!',
     diskusiDisabled: 'Konser sudah selesai — form komentar ditutup.',
     lihatSpotify: 'Buka di Spotify',
+    // Social Proof
+    goingCount: 'orang going',
+    // Push Notif
+    notifPermTitle: 'Aktifkan Notifikasi?',
+    notifPermBody: 'Dapatkan reminder H-7 & H-1 untuk konser di wishlist kamu.',
+    notifEnabled: 'Reminder diaktifkan! 🔔',
+    notifDisabled: 'Notifikasi dinonaktifkan',
+    // Checkin
+    checkInBtn: 'Check-in di Venue',
+    checkInDone: 'Sudah Check-in ✅',
+    checkInTitle: 'Concert Check-in',
+    checkInCount: 'orang check-in',
+    // In-App Chat
+    chatTitle: 'Chat',
+    chatPlaceholder: 'Pesan...',
+    chatNamePlaceholder: 'Nama kamu',
+    chatSend: 'Kirim',
+    chatEmpty: 'Belum ada pesan. Mulai chat!',
+    chatOpenFor: 'Chat untuk post ini',
+    // Seat Map
+    seatMapTitle: '🗺️ Denah & Tips Venue',
+    seatMapCategories: 'Kategori Kursi',
+    seatMapTips: 'Tips Venue',
+    seatMapNotAvail: 'Denah venue belum tersedia',
+    // Playlist
+    playlistTitle: '🎵 Pre-Concert Playlist',
+    playlistBtn: 'Buka Playlist di Spotify',
+    playlistSearch: 'Cari Playlist di Spotify',
+    // Offline
+    offlineBanner: 'Mode Offline — Data mungkin tidak terbaru',
+    // Story
+    shareStoryBtn: '📸 Buat Story',
+    // Karaoke
+    karaokeBtn: '🎤 Karaoke Mode',
+    karaokeTitle: 'Karaoke Mode',
+    noLyrics: 'Lirik belum tersedia',
   },
   en: {
     appName: 'ConcertID',
@@ -282,6 +318,42 @@ const strings = {
     belumAdaFoto: 'No photos yet. Upload your photo from this concert!',
     diskusiDisabled: 'Concert has ended — comment form closed.',
     lihatSpotify: 'Open on Spotify',
+    // Social Proof
+    goingCount: 'going',
+    // Push Notif
+    notifPermTitle: 'Enable Notifications?',
+    notifPermBody: 'Get H-7 & H-1 reminders for concerts in your wishlist.',
+    notifEnabled: 'Reminder enabled! 🔔',
+    notifDisabled: 'Notifications disabled',
+    // Checkin
+    checkInBtn: 'Check-in at Venue',
+    checkInDone: 'Checked In ✅',
+    checkInTitle: 'Concert Check-in',
+    checkInCount: 'checked in',
+    // In-App Chat
+    chatTitle: 'Chat',
+    chatPlaceholder: 'Message...',
+    chatNamePlaceholder: 'Your name',
+    chatSend: 'Send',
+    chatEmpty: 'No messages yet. Start chatting!',
+    chatOpenFor: 'Chat for this post',
+    // Seat Map
+    seatMapTitle: '🗺️ Venue Map & Tips',
+    seatMapCategories: 'Seat Categories',
+    seatMapTips: 'Venue Tips',
+    seatMapNotAvail: 'Venue map not available',
+    // Playlist
+    playlistTitle: '🎵 Pre-Concert Playlist',
+    playlistBtn: 'Open Playlist on Spotify',
+    playlistSearch: 'Search Playlist on Spotify',
+    // Offline
+    offlineBanner: 'Offline Mode — Data may not be up-to-date',
+    // Story
+    shareStoryBtn: '📸 Create Story',
+    // Karaoke
+    karaokeBtn: '🎤 Karaoke Mode',
+    karaokeTitle: 'Karaoke Mode',
+    noLyrics: 'Lyrics not available',
   },
 } as const;
 

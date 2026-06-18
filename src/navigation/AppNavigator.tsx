@@ -13,6 +13,7 @@ import { CalendarScreen } from '../screens/CalendarScreen';
 import { NewsletterScreen } from '../screens/NewsletterScreen';
 import { MoreScreen } from '../screens/MoreScreen';
 import { DetailScreen } from '../screens/DetailScreen';
+import { KaraokeScreen } from '../screens/KaraokeScreen';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -25,6 +26,7 @@ function HomeStackNav() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="Home" component={HomeScreen} />
       <HomeStack.Screen name="Detail" component={DetailScreen} />
+      <HomeStack.Screen name="Karaoke" component={KaraokeScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -34,6 +36,7 @@ function WishlistStackNav() {
     <WishlistStack.Navigator screenOptions={{ headerShown: false }}>
       <WishlistStack.Screen name="Wishlist" component={WishlistScreen} />
       <WishlistStack.Screen name="Detail" component={DetailScreen} />
+      <WishlistStack.Screen name="Karaoke" component={KaraokeScreen} />
     </WishlistStack.Navigator>
   );
 }
@@ -43,6 +46,7 @@ function CalendarStackNav() {
     <CalendarStack.Navigator screenOptions={{ headerShown: false }}>
       <CalendarStack.Screen name="Calendar" component={CalendarScreen} />
       <CalendarStack.Screen name="Detail" component={DetailScreen} />
+      <CalendarStack.Screen name="Karaoke" component={KaraokeScreen} />
     </CalendarStack.Navigator>
   );
 }

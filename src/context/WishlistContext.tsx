@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CONCERTS } from '../data/concerts';
+import { scheduleReminders, cancelReminders } from '../hooks/useNotifications';
 
 const KEY = 'cid_wishlist';
 
@@ -25,14 +27,23 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggle = useCallback(async (id: string): Promise<boolean> => {
-    setWishlist(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); AsyncStorage.setItem(KEY, JSON.stringify([...next])); return next; }
-      else { next.add(id); AsyncStorage.setItem(KEY, JSON.stringify([...next])); return next; }
-    });
     const current = await AsyncStorage.getItem(KEY);
-    const set = current ? new Set<string>(JSON.parse(current)) : new Set<string>();
-    return set.has(id);
+    const set     = current ? new Set<string>(JSON.parse(current)) : new Set<string>();
+    const isAdding = !set.has(id);
+
+    if (isAdding) {
+      set.add(id);
+      // Schedule notifications for this concert
+      const concert = CONCERTS.find(c => c.id === id);
+      if (concert) scheduleReminders(concert).catch(() => {});
+    } else {
+      set.delete(id);
+      cancelReminders(id).catch(() => {});
+    }
+
+    await AsyncStorage.setItem(KEY, JSON.stringify([...set]));
+    setWishlist(new Set(set));
+    return isAdding;
   }, []);
 
   const isWishlisted = useCallback((id: string) => wishlist.has(id), [wishlist]);

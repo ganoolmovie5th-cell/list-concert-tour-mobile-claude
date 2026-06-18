@@ -16,15 +16,20 @@ import { useBeenThere } from '../hooks/useBeenThere';
 import { useTicketMarket, buildWaHref, formatRpDisplay } from '../hooks/useTicketMarket';
 import { useGroupBuying, buildWaHrefGB } from '../hooks/useGroupBuying';
 import { useFanPhotos } from '../hooks/useFanPhotos';
+import { useConcertCheckin } from '../hooks/useConcertCheckin';
+import { useInAppChat } from '../hooks/useInAppChat';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { ShareSheet } from '../components/ShareSheet';
 import { Toast } from '../components/Toast';
+import { StoryCard } from '../components/StoryCard';
 import { CONCERTS, SETLISTS, ARTIST_SOCIALS, SPOTIFY_ARTISTS } from '../data/concerts';
+import { getSeatMap } from '../data/seatMaps';
+import { LYRICS } from '../data/lyrics';
 import { getGoogleCalendarUrl, isPast, timeAgo } from '../utils/helpers';
+import { useVoteCountsCtx } from '../context/VoteCountsContext';
 
 const { width } = Dimensions.get('window');
 type Tab = 'info' | 'setlist' | 'diskusi' | 'review';
-
 const GENRE_LABEL: Record<string, string> = {
   kpop: 'K-Pop', pop: 'Pop / R&B', rock: 'Rock / Metal', jazz: 'Jazz', indie: 'Indie / Festival',
 };
@@ -47,10 +52,18 @@ export function DetailScreen({ route, navigation }: any) {
   const { listings, ownerUid: tmOwnerUid, addListing, markSold, deleteListing, updateListing } = useTicketMarket(concertId);
   const { posts, ownerUid: gbOwnerUid, addPost, deletePost: deleteGbPost, updatePost } = useGroupBuying(concertId);
   const { photos, addPhoto } = useFanPhotos(concertId);
+  const { checkedIn, checking, checkInCount, checkIn } = useConcertCheckin(concert || { id: concertId } as any);
+  const [activeChatPostUid, setActiveChatPostUid] = useState<string | null>(null);
+  const { messages: chatMessages, myUid: chatMyUid, sendMessage: sendChatMsg } = useInAppChat(activeChatPostUid);
+  const { getCount } = useVoteCountsCtx();
+  const { going: globalGoing, interested: globalInterested } = getCount(concertId);
 
   const [tab, setTab] = useState<Tab>('info');
   const [showShare, setShowShare] = useState(false);
+  const [showStory, setShowStory] = useState(false);
   const [toast, setToast] = useState({ message: '', visible: false, type: 'success' as 'success' | 'error' | 'info' });
+  const [chatName, setChatName] = useState('');
+  const [chatText, setChatText] = useState('');
 
   // Diskusi
   const [commentText, setCommentText] = useState('');
@@ -134,6 +147,14 @@ export function DetailScreen({ route, navigation }: any) {
   const mapsUrl = `https://maps.google.com/?q=${mapsQuery}`;
   const spotifyUrl = spotifyId ? `https://open.spotify.com/artist/${spotifyId}` : null;
 
+  // New features data
+  const seatMap       = getSeatMap(concert.venue);
+  const hasLyrics     = !!(LYRICS[concert.id]?.length);
+  const spotifySearch = `https://open.spotify.com/search/${encodeURIComponent(concert.artist + ' ' + concert.tour + ' playlist')}`;
+  const spotifyPlaylistUrl = spotifyId
+    ? `https://open.spotify.com/artist/${spotifyId}/discography/album`
+    : spotifySearch;
+
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message: msg, visible: true, type });
     setTimeout(() => setToast(p => ({ ...p, visible: false })), 2800);
@@ -154,6 +175,17 @@ export function DetailScreen({ route, navigation }: any) {
   const handleBeenThere = async () => {
     const added = await toggleBeenThere(concertId);
     showToast(added ? t('beenThereAdded') : t('beenThereRemoved'), added ? 'success' : 'info');
+  };
+
+  const handleCheckIn = async () => {
+    const result = await checkIn();
+    showToast(result.message, result.success ? 'success' : 'info');
+  };
+
+  const handleSendChat = async () => {
+    if (!chatText.trim()) return;
+    await sendChatMsg(chatText, chatName);
+    setChatText('');
   };
 
   const handleSendComment = async () => {
@@ -240,6 +272,9 @@ export function DetailScreen({ route, navigation }: any) {
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
           <View style={styles.heroActions}>
+            <TouchableOpacity style={styles.heroActionBtn} onPress={() => setShowStory(true)}>
+              <Ionicons name="sparkles-outline" size={20} color="#fff" />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.heroActionBtn} onPress={() => setShowShare(true)}>
               <Ionicons name="share-outline" size={20} color="#fff" />
             </TouchableOpacity>
@@ -375,6 +410,27 @@ export function DetailScreen({ route, navigation }: any) {
               </TouchableOpacity>
             )}
 
+            {/* Concert Check-in — semua status */}
+            <TouchableOpacity
+              style={[styles.outlineBtn, { borderColor: checkedIn ? colors.confirmed : colors.accent, opacity: checking ? 0.6 : 1 }]}
+              onPress={handleCheckIn}
+              disabled={checkedIn || checking}
+            >
+              <Ionicons
+                name={checkedIn ? 'location' : 'location-outline'}
+                size={16}
+                color={checkedIn ? colors.confirmed : colors.accent}
+              />
+              <Text style={[styles.outlineBtnText, { color: checkedIn ? colors.confirmed : colors.accent }]}>
+                {checking ? '📍 Mengecek lokasi...' : checkedIn ? t('checkInDone') : t('checkInBtn')}
+              </Text>
+              {checkInCount > 0 && (
+                <Text style={[styles.checkInCount, { color: colors.textSubtle }]}>
+                  {checkInCount} {t('checkInCount')}
+                </Text>
+              )}
+            </TouchableOpacity>
+
             {/* Going / Interested — sesuai website:
                 past = dummy disabled, confirmed = aktif, rumor = aktif */}
             {past ? (
@@ -418,6 +474,22 @@ export function DetailScreen({ route, navigation }: any) {
                 <Ionicons name="open-outline" size={14} color="#1DB95488" />
               </TouchableOpacity>
             )}
+
+            {/* Concert Playlist Auto-Generate */}
+            <View style={[styles.card, { backgroundColor: '#1DB95411' }]}>
+              <Text style={[styles.cardTitle, { color: '#1DB954' }]}>{t('playlistTitle')}</Text>
+              <Text style={{ color: '#1DB95488', fontSize: 12 }}>
+                Playlist lagu-lagu {concert.artist} untuk warm-up sebelum konser!
+              </Text>
+              <TouchableOpacity
+                style={[styles.outlineBtn, { borderColor: '#1DB954' }]}
+                onPress={() => Linking.openURL(spotifyPlaylistUrl)}
+              >
+                <Ionicons name="musical-notes-outline" size={16} color="#1DB954" />
+                <Text style={[styles.outlineBtnText, { color: '#1DB954' }]}>{t('playlistBtn')}</Text>
+                <Ionicons name="open-outline" size={14} color="#1DB95488" />
+              </TouchableOpacity>
+            </View>
 
             {/* Description */}
             <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
@@ -601,7 +673,6 @@ export function DetailScreen({ route, navigation }: any) {
               <Text style={[styles.cardSub, { color: colors.textSubtle }]}>
                 Cari teman nonton bareng! Kontak ditampilkan sebagai ikon — nomor tidak diekspos.
               </Text>
-
               {forumDisabled ? (
                 <Text style={[styles.disabledText, { color: colors.textSubtle }]}>
                   {past ? t('forumDisabled') : t('forumDisabledRumor')}
@@ -665,9 +736,51 @@ export function DetailScreen({ route, navigation }: any) {
                               <Text style={{ fontSize: 22 }}>📷</Text>
                             </TouchableOpacity>
                           )}
+                          {/* In-App Chat button */}
+                          <TouchableOpacity onPress={() => setActiveChatPostUid(activeChatPostUid === p.uid ? null : p.uid)}>
+                            <Text style={{ fontSize: 22 }}>{activeChatPostUid === p.uid ? '❌' : '💬'}</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                       {p.note ? <Text style={[styles.listingNote, { color: colors.textMuted }]}>{p.note}</Text> : null}
+
+                      {/* In-App Chat Panel */}
+                      {activeChatPostUid === p.uid && (
+                        <View style={[styles.chatPanel, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+                          <Text style={[styles.chatTitle, { color: colors.accent }]}>💬 {t('chatTitle')}</Text>
+                          <ScrollView style={styles.chatMessages} contentContainerStyle={{ gap: 8, paddingVertical: 8 }}>
+                            {chatMessages.length === 0 ? (
+                              <Text style={[{ color: colors.textSubtle, textAlign: 'center', fontSize: 12 }]}>{t('chatEmpty')}</Text>
+                            ) : chatMessages.map(msg => (
+                              <View key={msg.uid} style={[styles.chatBubble, { alignSelf: msg.isOwn ? 'flex-end' : 'flex-start', backgroundColor: msg.isOwn ? colors.accent : colors.surfaceElevated }]}>
+                                {!msg.isOwn && <Text style={{ color: colors.accent, fontSize: 10, fontWeight: '700', marginBottom: 2 }}>{msg.senderName}</Text>}
+                                <Text style={{ color: msg.isOwn ? '#fff' : colors.text, fontSize: 13 }}>{msg.message}</Text>
+                                <Text style={{ color: msg.isOwn ? 'rgba(255,255,255,0.6)' : colors.textSubtle, fontSize: 9, marginTop: 2 }}>{timeAgo(msg.createdAt)}</Text>
+                              </View>
+                            ))}
+                          </ScrollView>
+                          <View style={styles.chatInput}>
+                            <TextInput
+                              style={[styles.chatInputField, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                              placeholder={t('chatNamePlaceholder')}
+                              placeholderTextColor={colors.textSubtle}
+                              value={chatName}
+                              onChangeText={setChatName}
+                            />
+                            <TextInput
+                              style={[styles.chatInputField, { flex: 2, backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                              placeholder={t('chatPlaceholder')}
+                              placeholderTextColor={colors.textSubtle}
+                              value={chatText}
+                              onChangeText={setChatText}
+                            />
+                            <TouchableOpacity style={[styles.chatSendBtn, { backgroundColor: colors.accent }]} onPress={handleSendChat}>
+                              <Ionicons name="send" size={16} color="#fff" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+
                       {isOwner && (
                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 6, justifyContent: 'flex-end' }}>
                           <TouchableOpacity onPress={() => { setEditGbUid(p.uid); setEditGbFields({}); }}>
@@ -681,6 +794,41 @@ export function DetailScreen({ route, navigation }: any) {
                     </View>
                   );
                 })
+              )}
+            </View>
+
+            {/* Venue Seat Map */}
+            <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('seatMapTitle')}</Text>
+              {seatMap ? (
+                <>
+                  <Text style={[styles.cardSub, { color: colors.textMuted }]}>{seatMap.description}</Text>
+                  <Text style={[{ fontSize: 12, color: colors.accent, marginTop: 4 }]}>📍 {seatMap.imageNote}</Text>
+                  <Text style={[styles.cardTitle, { color: colors.text, fontSize: 13, marginTop: 8 }]}>{t('seatMapCategories')}</Text>
+                  {seatMap.categories.map((cat, i) => (
+                    <View key={i} style={[styles.seatCatRow, { borderColor: cat.color + '44' }]}>
+                      <View style={[styles.seatColorDot, { backgroundColor: cat.color }]} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[{ color: colors.text, fontWeight: '600', fontSize: 13 }]}>{cat.name}</Text>
+                        <Text style={[{ color: colors.textMuted, fontSize: 11 }]}>{cat.description}</Text>
+                        <Text style={[{ color: cat.color, fontSize: 11, marginTop: 2 }]}>💡 {cat.tips}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  <Text style={[styles.cardTitle, { color: colors.text, fontSize: 13, marginTop: 8 }]}>{t('seatMapTips')}</Text>
+                  {seatMap.tips.map((tip, i) => (
+                    <Text key={i} style={[{ color: colors.textMuted, fontSize: 12, lineHeight: 20 }]}>{tip}</Text>
+                  ))}
+                  <TouchableOpacity
+                    style={[styles.outlineBtn, { borderColor: colors.accent, marginTop: 4 }]}
+                    onPress={() => Linking.openURL(seatMap.mapUrl)}
+                  >
+                    <Ionicons name="map-outline" size={16} color={colors.accent} />
+                    <Text style={[styles.outlineBtnText, { color: colors.accent }]}>Buka di Google Maps</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={[{ color: colors.textSubtle, fontSize: 13 }]}>{t('seatMapNotAvail')}</Text>
               )}
             </View>
 
@@ -701,6 +849,15 @@ export function DetailScreen({ route, navigation }: any) {
         {/* ─── SETLIST TAB ─── */}
         {tab === 'setlist' && (
           <View style={styles.tabContent}>
+            {/* Karaoke Mode Button */}
+            <TouchableOpacity
+              style={[styles.bigBtn, { backgroundColor: '#a855f722' }]}
+              onPress={() => navigation.navigate('Karaoke', { concertId, concertArtist: concert.artist })}
+            >
+              <Ionicons name="mic" size={18} color="#a855f7" />
+              <Text style={[styles.bigBtnText, { color: '#a855f7' }]}>{t('karaokeBtn')}</Text>
+              {hasLyrics && <View style={[styles.lyricsAvailBadge, { backgroundColor: '#a855f733' }]}><Text style={{ color: '#a855f7', fontSize: 10, fontWeight: '700' }}>LYRICS ✓</Text></View>}
+            </TouchableOpacity>
             {setlist.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyEmoji}>🎵</Text>
@@ -960,6 +1117,14 @@ export function DetailScreen({ route, navigation }: any) {
 
       <ShareSheet visible={showShare} concert={concert} onClose={() => setShowShare(false)} onCopied={() => showToast(t('linkCopied'))} />
       <Toast message={toast.message} visible={toast.visible} type={toast.type} />
+      {showStory && (
+        <StoryCard
+          concert={concert}
+          going={globalGoing}
+          interested={globalInterested}
+          onClose={() => setShowStory(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -1063,4 +1228,17 @@ const styles = StyleSheet.create({
   photoItem: { width: (width - 80) / 3, gap: 4 },
   photoThumb: { width: '100%', height: (width - 80) / 3, borderRadius: 8, backgroundColor: '#333' },
   photoAuthor: { fontSize: 10, textAlign: 'center' },
+  // New Features
+  checkInCount: { fontSize: 10, marginLeft: 4 },
+  seatCatRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 6 },
+  seatColorDot: { width: 12, height: 12, borderRadius: 6, marginTop: 4 },
+  lyricsAvailBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  // In-App Chat
+  chatPanel: { borderRadius: 12, borderWidth: 1, padding: 12, marginTop: 10, gap: 8 },
+  chatTitle: { fontSize: 13, fontWeight: '700' },
+  chatMessages: { maxHeight: 200 },
+  chatBubble: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, maxWidth: '80%' },
+  chatInput: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  chatInputField: { flex: 1, borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13 },
+  chatSendBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 });
