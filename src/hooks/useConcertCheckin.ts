@@ -55,13 +55,32 @@ export function useConcertCheckin(concert: Concert) {
   }, [concert.id]);
 
   const checkIn = useCallback(async (): Promise<{ success: boolean; message: string }> => {
-    if (!isPast(concert)) {
-      // Untuk konser past — langsung allow tanpa GPS
-      return _doCheckIn(concert, null, null, false);
+    // Block: konser sudah selesai
+    if (isPast(concert)) {
+      return { success: false, message: '⏰ Konser sudah selesai, tidak bisa check-in.' };
     }
 
+    // Block: konser masih rumor
+    if (concert.confirmStatus === 'rumor') {
+      return { success: false, message: '🔮 Check-in hanya tersedia untuk konser yang sudah confirmed.' };
+    }
+
+    // Block: konser masih jauh — hanya boleh check-in di hari konser
+    const today = new Date();
+    const concertDay = concert.rawDate;
+    const isConcertDay = (
+      today.getFullYear() === concertDay.getFullYear() &&
+      today.getMonth() === concertDay.getMonth() &&
+      today.getDate() === concertDay.getDate()
+    );
+    if (!isConcertDay) {
+      const daysLeft = Math.ceil((concertDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return { success: false, message: `📅 Check-in hanya tersedia pada hari konser (${daysLeft} hari lagi).` };
+    }
+
+    // Require GPS
     if (!Location) {
-      return _doCheckIn(concert, null, null, false);
+      return { success: false, message: '📍 GPS tidak tersedia di perangkat ini.' };
     }
 
     setChecking(true);
@@ -70,34 +89,32 @@ export function useConcertCheckin(concert: Concert) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        // Fallback check-in tanpa GPS
         setChecking(false);
-        return _doCheckIn(concert, null, null, false);
+        return { success: false, message: '📍 Izin lokasi diperlukan untuk check-in. Aktifkan di Pengaturan.' };
       }
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const { latitude, longitude } = loc.coords;
 
       const venueCoord = findVenueCoord(concert.venue);
-      let verified = false;
-      let message  = '';
+      if (!venueCoord) {
+        setChecking(false);
+        // Venue koordinat tidak diketahui — tetap izinkan check-in hari-H
+        return _doCheckIn(concert, latitude, longitude, false, '📍 Koordinat venue tidak ditemukan. Check-in dicatat.');
+      }
 
-      if (venueCoord) {
-        const dist = distanceMeters(latitude, longitude, venueCoord.lat, venueCoord.lng);
-        verified   = dist <= venueCoord.radiusMeters;
-        message    = verified
-          ? `✅ Check-in verified! Kamu ${Math.round(dist)}m dari ${venueCoord.name}`
-          : `📍 Kamu ${Math.round(dist)}m dari venue (radius: ${venueCoord.radiusMeters}m). Check-in tetap dicatat.`;
-      } else {
-        message = '📍 Lokasi venue tidak ditemukan. Check-in dicatat tanpa verifikasi GPS.';
+      const dist = distanceMeters(latitude, longitude, venueCoord.lat, venueCoord.lng);
+      if (dist > venueCoord.radiusMeters) {
+        setChecking(false);
+        return { success: false, message: `📍 Kamu ${Math.round(dist)}m dari venue. Check-in hanya bisa dalam radius ${venueCoord.radiusMeters}m dari ${venueCoord.name}.` };
       }
 
       setChecking(false);
-      return _doCheckIn(concert, latitude, longitude, verified, message);
+      return _doCheckIn(concert, latitude, longitude, true, `✅ Check-in verified! Kamu ${Math.round(dist)}m dari ${venueCoord.name}`);
     } catch (e: any) {
       setChecking(false);
       setError('Gagal mendapat lokasi');
-      return _doCheckIn(concert, null, null, false);
+      return { success: false, message: '❌ Gagal mendapatkan lokasi. Pastikan GPS aktif dan coba lagi.' };
     }
   }, [concert]);
 

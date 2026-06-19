@@ -356,16 +356,6 @@ export function NewsletterScreen() {
           </View>
         </View>
 
-        {/* Website */}
-        <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-          <TouchableOpacity
-            style={[styles.websiteBtn, { borderColor: colors.accent }]}
-            onPress={() => Linking.openURL('https://www.list-concert-tour.web.id')}
-          >
-            <Ionicons name="globe-outline" size={18} color={colors.accent} />
-            <Text style={[styles.websiteBtnText, { color: colors.accent }]}>Buka Website</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

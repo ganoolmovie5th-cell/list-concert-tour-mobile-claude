@@ -349,14 +349,7 @@ export function DetailScreen({ route, navigation }: any) {
               </View>
             ))}
 
-            {/* Google Maps */}
-            <TouchableOpacity
-              style={[styles.outlineBtn, { borderColor: colors.accent }]}
-              onPress={() => Linking.openURL(mapsUrl)}
-            >
-              <Ionicons name="map-outline" size={16} color={colors.accent} />
-              <Text style={[styles.outlineBtnText, { color: colors.accent }]}>{t('openMaps')}</Text>
-            </TouchableOpacity>
+            {/* Google Maps — tersedia di bagian Denah & Tips Venue di bawah */}
 
             {/* Ticket Categories */}
             {concert.ticketCategories.length > 0 && (
@@ -410,26 +403,28 @@ export function DetailScreen({ route, navigation }: any) {
               </TouchableOpacity>
             )}
 
-            {/* Concert Check-in — semua status */}
-            <TouchableOpacity
-              style={[styles.outlineBtn, { borderColor: checkedIn ? colors.confirmed : colors.accent, opacity: checking ? 0.6 : 1 }]}
-              onPress={handleCheckIn}
-              disabled={checkedIn || checking}
-            >
-              <Ionicons
-                name={checkedIn ? 'location' : 'location-outline'}
-                size={16}
-                color={checkedIn ? colors.confirmed : colors.accent}
-              />
-              <Text style={[styles.outlineBtnText, { color: checkedIn ? colors.confirmed : colors.accent }]}>
-                {checking ? '📍 Mengecek lokasi...' : checkedIn ? t('checkInDone') : t('checkInBtn')}
-              </Text>
-              {checkInCount > 0 && (
-                <Text style={[styles.checkInCount, { color: colors.textSubtle }]}>
-                  {checkInCount} {t('checkInCount')}
+            {/* Concert Check-in — hanya untuk confirmed upcoming, tersedia di hari konser */}
+            {!past && !isRumor && (
+              <TouchableOpacity
+                style={[styles.outlineBtn, { borderColor: checkedIn ? colors.confirmed : colors.accent, opacity: checking ? 0.6 : 1 }]}
+                onPress={handleCheckIn}
+                disabled={checkedIn || checking}
+              >
+                <Ionicons
+                  name={checkedIn ? 'location' : 'location-outline'}
+                  size={16}
+                  color={checkedIn ? colors.confirmed : colors.accent}
+                />
+                <Text style={[styles.outlineBtnText, { color: checkedIn ? colors.confirmed : colors.accent }]}>
+                  {checking ? '📍 Mengecek lokasi...' : checkedIn ? t('checkInDone') : t('checkInBtn')}
                 </Text>
-              )}
-            </TouchableOpacity>
+                {checkInCount > 0 && (
+                  <Text style={[styles.checkInCount, { color: colors.textSubtle }]}>
+                    {checkInCount} {t('checkInCount')}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
 
             {/* Going / Interested — sesuai website:
                 past = dummy disabled, confirmed = aktif, rumor = aktif */}
@@ -474,22 +469,6 @@ export function DetailScreen({ route, navigation }: any) {
                 <Ionicons name="open-outline" size={14} color="#1DB95488" />
               </TouchableOpacity>
             )}
-
-            {/* Concert Playlist Auto-Generate */}
-            <View style={[styles.card, { backgroundColor: '#1DB95411' }]}>
-              <Text style={[styles.cardTitle, { color: '#1DB954' }]}>{t('playlistTitle')}</Text>
-              <Text style={{ color: '#1DB95488', fontSize: 12 }}>
-                Playlist lagu-lagu {concert.artist} untuk warm-up sebelum konser!
-              </Text>
-              <TouchableOpacity
-                style={[styles.outlineBtn, { borderColor: '#1DB954' }]}
-                onPress={() => Linking.openURL(spotifyPlaylistUrl)}
-              >
-                <Ionicons name="musical-notes-outline" size={16} color="#1DB954" />
-                <Text style={[styles.outlineBtnText, { color: '#1DB954' }]}>{t('playlistBtn')}</Text>
-                <Ionicons name="open-outline" size={14} color="#1DB95488" />
-              </TouchableOpacity>
-            </View>
 
             {/* Description */}
             <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>

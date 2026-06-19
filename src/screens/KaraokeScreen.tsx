@@ -25,13 +25,13 @@ export function KaraokeScreen({ route, navigation }: Props) {
   const { colors, isDark }            = useTheme();
 
   const songs: SongLyrics[] = LYRICS[concertId] || [];
-  const setlist              = SETLISTS[concertId] || { actual: [], predicted: [] };
+  const setlistData          = SETLISTS[concertId] || [];
 
-  // Combine setlist songs with lyrics if available
-  const allSetlist = [
-    ...(setlist.actual    || []).map((s: string) => ({ title: s, actual: true })),
-    ...(setlist.predicted || []).map((s: string) => ({ title: s, actual: false })),
-  ];
+  // Build allSetlist dari format { song, prediction? } (sama dengan DetailScreen)
+  const allSetlist = setlistData.map((s: { song: string; prediction?: boolean }) => ({
+    title: s.song,
+    actual: !s.prediction,
+  }));
 
   const [currentSongIdx, setCurrentSongIdx] = useState(0);
   const [isPlaying, setIsPlaying]            = useState(false);
