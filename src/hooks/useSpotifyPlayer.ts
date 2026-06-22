@@ -6,9 +6,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Linking } from 'react-native';
 import {
-  buildAuthUrl, exchangeCode, saveImplicitToken,
+  buildAuthUrl, exchangeCode,
   getValidToken, apiPlay, apiPause, apiResume,
-  apiGetPlayback, clearSession, getAuthFlow, SpPlayback,
+  apiGetPlayback, clearSession, SpPlayback,
 } from '../services/SpotifyService';
 
 export interface SpotifyPlayerState {
@@ -50,34 +50,16 @@ export function useSpotifyPlayer() {
     }
   };
 
-  // ── Parse redirect URI ────────────────────────────────────────────
+  // ── Parse redirect URI (PKCE only: ?code=xxx) ────────────────────
   const handleRedirect = useCallback(async (url: string) => {
     if (!url.startsWith('concertid://spotify-auth')) return;
-
-    const flow = await getAuthFlow();
-
-    if (flow === 'pkce') {
-      // concertid://spotify-auth?code=xxx
-      const code = url.split('code=')[1]?.split('&')[0];
-      if (!code) { setS({ connecting: false, error: 'Login dibatalkan.' }); return; }
-      setS({ connecting: true, error: null });
-      const token = await exchangeCode(code);
-      if (!mounted.current) return;
-      if (token) { tokenRef.current = token; setS({ isConnected: true, connecting: false }); }
-      else setS({ connecting: false, error: 'Token exchange gagal. Coba lagi.' });
-
-    } else {
-      // Implicit: concertid://spotify-auth#access_token=xxx&expires_in=3600
-      const hash  = url.split('#')[1] || url.split('?')[1] || '';
-      const pairs = Object.fromEntries(hash.split('&').map(p => p.split('=')));
-      const token = pairs['access_token'];
-      if (!token) { setS({ connecting: false, error: 'Login dibatalkan.' }); return; }
-      const exp   = parseInt(pairs['expires_in'] || '3600');
-      await saveImplicitToken(decodeURIComponent(token), exp);
-      if (!mounted.current) return;
-      tokenRef.current = decodeURIComponent(token);
-      setS({ isConnected: true, connecting: false, error: null });
-    }
+    const code = url.split('code=')[1]?.split('&')[0];
+    if (!code) { setS({ connecting: false, error: 'Login dibatalkan.' }); return; }
+    setS({ connecting: true, error: null });
+    const token = await exchangeCode(code);
+    if (!mounted.current) return;
+    if (token) { tokenRef.current = token; setS({ isConnected: true, connecting: false, error: null }); }
+    else setS({ connecting: false, error: 'Token exchange gagal. Coba lagi.' });
   }, []);
 
   // ── Auth ──────────────────────────────────────────────────────────
