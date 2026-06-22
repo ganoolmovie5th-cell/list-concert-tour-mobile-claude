@@ -1,29 +1,27 @@
 /**
- * KaraokeScreen v3 — Proper karaoke experience
- * - Highlighted active lyric line (baris aktif menonjol, lainnya redup)
- * - Auto-advance per baris dengan interval + speed control
- * - Tap baris untuk loncat ke baris itu
- * - Tombol Spotify per lagu untuk buka audio
- * - Instruksi cara pakai
+ * KaraokeScreen v4 — Spotify-integrated karaoke experience
+ * - Connect to Spotify → play audio in background
+ * - Highlighted active lyric line, auto-advance per baris
+ * - Tap baris untuk loncat, speed control
+ * - Fallback: tanpa Spotify (timer only)
  */
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Animated, Linking,
+  StyleSheet, StatusBar, Animated, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { LYRICS, SongLyrics } from '../data/lyrics';
 import { SETLISTS, SPOTIFY_ARTISTS } from '../data/concerts';
+import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
 
 interface Props { route: any; navigation: any; }
 
-// ms per baris untuk setiap kecepatan
 const SPEED_MS: Record<string, number> = { '0.5x': 5000, '1x': 3000, '1.5x': 2000, '2x': 1500 };
 const SPEEDS = ['0.5x', '1x', '1.5x', '2x'] as const;
-// tinggi perkiraan tiap baris lirik (untuk auto-scroll)
-const LINE_H = 42;
+const LINE_H  = 42;
 const TITLE_H = 160;
 
 
@@ -31,36 +29,31 @@ export function KaraokeScreen({ route, navigation }: Props) {
   const { concertId, concertArtist } = route.params;
   const { colors, isDark } = useTheme();
 
-  const songs: SongLyrics[]   = LYRICS[concertId] || [];
-  const setlistData            = SETLISTS[concertId] || [];
-  const allSetlist             = setlistData.map((s: { song: string; prediction?: boolean }) => ({
+  const songs: SongLyrics[] = LYRICS[concertId] || [];
+  const setlistData          = SETLISTS[concertId] || [];
+  const allSetlist           = setlistData.map((s: { song: string; prediction?: boolean }) => ({
     title: s.song, actual: !s.prediction,
   }));
 
-  const [songIdx,      setSongIdx]      = useState(0);
-  const [lineIdx,      setLineIdx]      = useState(-1);   // -1 = belum mulai
-  const [isPlaying,    setIsPlaying]    = useState(false);
-  const [speed,        setSpeed]        = useState<string>('1x');
-  const [showHint,     setShowHint]     = useState(true);
+  const [songIdx,   setSongIdx]   = useState(0);
+  const [lineIdx,   setLineIdx]   = useState(-1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed,     setSpeed]     = useState<string>('1x');
+  const [showHint,  setShowHint]  = useState(true);
 
-  const scrollRef    = useRef<ScrollView>(null);
-  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pulseAnim    = useRef(new Animated.Value(1)).current;
-  const scrollOffset = useRef(0);
+  const scrollRef   = useRef<ScrollView>(null);
+  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
+  const scrollOff   = useRef(0);
 
-  const currentSong  = songs[songIdx] || null;
-  const lines        = currentSong?.lines || [];
-  const hasLyrics    = songs.length > 0;
-  const hasSetlist   = allSetlist.length > 0;
+  const currentSong = songs[songIdx] || null;
+  const lines       = currentSong?.lines || [];
+  const hasLyrics   = songs.length > 0;
+  const hasSetlist  = allSetlist.length > 0;
+  const artistId    = SPOTIFY_ARTISTS[concertId];
 
-  // Spotify URL helper
-  const spotifyTrackUrl = (id?: string) =>
-    id ? `https://open.spotify.com/track/${id}` : null;
-  const spotifyArtistUrl = () => {
-    const aid = SPOTIFY_ARTISTS[concertId];
-    return aid ? `https://open.spotify.com/artist/${aid}` : null;
-  };
-  const openSpotify = (url: string | null) => { if (url) Linking.openURL(url); };
+  // ── Spotify player ────────────────────────────────────────────────
+  const spotify = useSpotifyPlayer();
 
 
   // Auto-scroll ke baris aktif
@@ -106,25 +99,34 @@ export function KaraokeScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (isPlaying && !hasLyrics) {
       const iv = setInterval(() => {
-        scrollOffset.current += 2;
-        scrollRef.current?.scrollTo({ y: scrollOffset.current, animated: true });
+        scrollOff.current += 2;
+        scrollRef.current?.scrollTo({ y: scrollOff.current, animated: true });
       }, 100);
       return () => clearInterval(iv);
     }
   }, [isPlaying, hasLyrics]);
 
+  // ── Sync lineIdx dgn Spotify progressMs ───────────────────────────
+  // Ketika Spotify pause/play dari luar, sinkronkan state lokal
+  useEffect(() => {
+    if (spotify.isConnected && !spotify.isPlaying && isPlaying) {
+      setIsPlaying(false);
+    }
+  }, [spotify.isPlaying, spotify.isConnected, isPlaying]);
 
-  // Ganti lagu — reset state
+
+  // Ganti lagu — reset state + pause Spotify
   const goToSong = useCallback((idx: number) => {
     setIsPlaying(false);
+    if (spotify.isConnected && spotify.isPlaying) spotify.pause();
     setSongIdx(idx);
     setLineIdx(-1);
     setShowHint(true);
-    scrollOffset.current = 0;
+    scrollOff.current = 0;
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, []);
+  }, [spotify]);
 
-  // Tap baris — loncat ke baris itu & mulai play
+  // Tap baris — loncat ke baris & mulai
   const tapLine = useCallback((idx: number) => {
     setLineIdx(idx);
     setIsPlaying(true);
@@ -132,13 +134,24 @@ export function KaraokeScreen({ route, navigation }: Props) {
     scrollToLine(idx);
   }, [scrollToLine]);
 
-  // Toggle play/pause
-  const togglePlay = useCallback(() => {
+  // Toggle play/pause — with Spotify if connected
+  const togglePlay = useCallback(async () => {
     setShowHint(false);
-    // Set lineIdx ke 0 dulu jika belum mulai — dipanggil SEBELUM setIsPlaying
-    if (!isPlaying && lineIdx < 0) setLineIdx(0);
-    setIsPlaying(p => !p);
-  }, [isPlaying, lineIdx]);
+    if (!isPlaying) {
+      // START
+      if (lineIdx < 0) setLineIdx(0);
+      setIsPlaying(true);
+      if (spotify.isConnected && currentSong?.spotifyId) {
+        await spotify.playTrack(currentSong.spotifyId);
+      } else if (spotify.isConnected && spotify.progressMs > 0) {
+        await spotify.resume();
+      }
+    } else {
+      // PAUSE
+      setIsPlaying(false);
+      if (spotify.isConnected) await spotify.pause();
+    }
+  }, [isPlaying, lineIdx, spotify, currentSong]);
 
   const cycleSpeed = () => {
     setSpeed(s => SPEEDS[(SPEEDS.indexOf(s as any) + 1) % SPEEDS.length]);
@@ -168,6 +181,39 @@ export function KaraokeScreen({ route, navigation }: Props) {
         )}
       </View>
 
+
+      {/* ── Spotify Connect Banner ── */}
+      {!spotify.isConnected ? (
+        <TouchableOpacity
+          style={[styles.spConnectBanner, { backgroundColor: '#1DB95418', borderColor: '#1DB95444' }]}
+          onPress={spotify.connect}
+          disabled={spotify.connecting}
+        >
+          {spotify.connecting ? (
+            <ActivityIndicator size="small" color="#1DB954" />
+          ) : (
+            <Ionicons name="musical-notes" size={18} color="#1DB954" />
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.spConnectTitle, { color: '#1DB954' }]}>
+              {spotify.connecting ? 'Menghubungkan ke Spotify...' : '🎵 Hubungkan ke Spotify'}
+            </Text>
+            <Text style={[styles.spConnectSub, { color: '#1DB95499' }]}>
+              {spotify.connecting ? 'Selesaikan login di browser' : 'Login sekali → audio otomatis main saat Play'}
+            </Text>
+          </View>
+          {!spotify.connecting && <Ionicons name="chevron-forward" size={16} color="#1DB95488" />}
+        </TouchableOpacity>
+      ) : (
+        <View style={[styles.spConnectedBar, { backgroundColor: '#1DB95412', borderColor: '#1DB95433' }]}>
+          <Ionicons name="checkmark-circle" size={14} color="#1DB954" />
+          <Text style={[styles.spConnectedText, { color: '#1DB954' }]}>Spotify terhubung</Text>
+          {spotify.error && <Text style={[styles.spError, { color: '#ef4444' }]}>⚠ {spotify.error}</Text>}
+          <TouchableOpacity onPress={spotify.disconnect} style={styles.spDisconnect}>
+            <Text style={{ color: '#1DB95488', fontSize: 11 }}>Putuskan</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── Song tabs ── */}
       {hasLyrics && (
@@ -376,4 +422,12 @@ const styles = StyleSheet.create({
   controls:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, paddingVertical: 14, borderTopWidth: 1 },
   controlBtn:      { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   playBtn:         { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', shadowColor: '#a855f7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 },
+  // Spotify
+  spConnectBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 8, marginBottom: 2, padding: 12, borderRadius: 14, borderWidth: 1 },
+  spConnectTitle:  { fontSize: 13, fontWeight: '700' },
+  spConnectSub:    { fontSize: 11, marginTop: 1 },
+  spConnectedBar:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 16, marginTop: 8, marginBottom: 2, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  spConnectedText: { fontSize: 12, fontWeight: '600', flex: 1 },
+  spError:         { fontSize: 11, flex: 1 },
+  spDisconnect:    { paddingHorizontal: 8, paddingVertical: 4 },
 });
