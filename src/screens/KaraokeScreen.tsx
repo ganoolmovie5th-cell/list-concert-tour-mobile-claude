@@ -250,7 +250,7 @@ export function KaraokeScreen({ route, navigation }: Props) {
       {/* ── Lyrics / Setlist ── */}
       <ScrollView ref={scrollRef} contentContainerStyle={styles.lyricsContainer}
         showsVerticalScrollIndicator={false}
-        onScroll={e => { scrollOffset.current = e.nativeEvent.contentOffset.y; }}
+        onScroll={e => { scrollOff.current = e.nativeEvent.contentOffset.y; }}
         scrollEventThrottle={100}>
 
         {hasLyrics && currentSong ? (
