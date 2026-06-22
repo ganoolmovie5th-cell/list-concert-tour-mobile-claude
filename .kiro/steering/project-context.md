@@ -59,6 +59,7 @@ Files: <file yang diubah selain README & steering>
 | `fan_photos` | `useFanPhotos` | Foto + Storage |
 | `gb_chat` | `useInAppChat` | In-app chat per GB post, polling 10s |
 | `concert_checkins` | `useConcertCheckin` | Check-in GPS radius 1km |
+| `live_setlist` | `useLiveSetlist` | Live setlist crowdsource — polling 10s, submit/delete |
 
 ### Catatan Teknis Kritis
 - Going/Interested: query pakai **`select=type,device_uid`** — wajib agar `myVote` terbaca
@@ -115,6 +116,8 @@ Paket yang ditambahkan (perlu `npm install`):
 | Karaoke Mode | `KaraokeScreen.tsx`, `lyrics.ts` | Lirik 8 artis, fullscreen |
 | Concert Check-in | `useConcertCheckin.ts` | GPS + Supabase `concert_checkins` |
 | Spotify OAuth | `SpotifyService.ts`, `useSpotifyPlayer.ts` | PKCE + expo-web-browser, Premium only playback |
+| Concert Passport | `PassportScreen.tsx` | Stamps grid, achievement badges, genre stats, progress bar — pakai `useBeenThere` + `CONCERTS.filter(isPast)` |
+| Live Setlist Update | `useLiveSetlist.ts`, `DetailScreen.tsx` | Tab 🎙️ Live di DetailScreen (non-past, non-rumor); polling 10s, submit/delete, isLiveNow badge |
 
 ### Supabase Tables Baru (run di SQL Editor):
 ```sql
@@ -127,6 +130,12 @@ CREATE TABLE IF NOT EXISTS concert_checkins (
   checked_in_at timestamptz, lat float8, lng float8, verified boolean DEFAULT false,
   UNIQUE(concert_id, device_uid)
 );
+CREATE TABLE IF NOT EXISTS live_setlist (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  concert_id text NOT NULL, song_name text NOT NULL, song_number integer DEFAULT 1,
+  submitted_by text NOT NULL DEFAULT 'Anonim', created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_live_setlist_concert ON live_setlist(concert_id, created_at DESC);
 ```
 
 ---

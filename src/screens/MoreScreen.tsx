@@ -20,7 +20,7 @@ const PLATFORMS = [
   { name: 'TIX.ID', url: 'https://www.tix.id', color: '#6d28d9' },
 ];
 
-export function MoreScreen() {
+export function MoreScreen({ navigation }: any) {
   const { colors, isDark, toggle } = useTheme();
   const { lang, toggleLang, t } = useLanguage();
 
@@ -29,6 +29,24 @@ export function MoreScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.title, { color: colors.text }]}>⚙️ {t('more')}</Text>
+        </View>
+
+        {/* Concert Passport */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSubtle }]}>FITUR SPESIAL</Text>
+          <TouchableOpacity
+            style={[styles.passportBtn, { backgroundColor: colors.accent + '18', borderColor: colors.accent + '44' }]}
+            onPress={() => navigation.navigate('Passport')}
+          >
+            <View style={styles.passportBtnLeft}>
+              <Text style={styles.passportBtnEmoji}>🎟️</Text>
+              <View>
+                <Text style={[styles.passportBtnTitle, { color: colors.text }]}>Concert Passport</Text>
+                <Text style={[styles.passportBtnSub, { color: colors.textMuted }]}>Lihat semua konser yang pernah kamu hadiri</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.accent} />
+          </TouchableOpacity>
         </View>
 
         {/* Settings */}
@@ -138,4 +156,9 @@ const styles = StyleSheet.create({
   websiteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12 },
   websiteBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   footer: { textAlign: 'center', fontSize: 12, marginTop: 32, marginBottom: 16 },
+  passportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 14, borderWidth: 1, padding: 14 },
+  passportBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  passportBtnEmoji: { fontSize: 28 },
+  passportBtnTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  passportBtnSub: { fontSize: 12 },
 });

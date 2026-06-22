@@ -43,6 +43,7 @@ Versi mobile dari [list-concert-tour.web.id](https://www.list-concert-tour.web.i
 | `fan_photos` | `useFanPhotos` | Foto dari fans |
 | `gb_chat` | `useInAppChat` | In-app chat per Group Buying post (Juni 2026) |
 | `concert_checkins` | `useConcertCheckin` | Concert check-in geolocation (Juni 2026) |
+| `live_setlist` | `useLiveSetlist` | Live Setlist crowdsource — submit lagu yang sedang diputar (Juni 2026) |
 
 ### Strategi Data
 - **Supabase = primary** — sync antar web & mobile, antar semua device
@@ -78,6 +79,8 @@ FOR INSERT WITH CHECK (bucket_id = 'fan-photos');
 
 ### 📊 Data Konser
 - **40 konser** 2025–2027 — **selalu sync dari web repo** (`app.js` = source of truth)
+- 🎟️ **Concert Passport** — lihat semua konser yang pernah dihadiri sebagai passport stamps, achievement badges, genre stats
+- 🎙️ **Live Setlist Update** — crowdsource lagu yang sedang diputar saat konser, polling 10s, submit/delete milik sendiri
 - Status: Confirmed ✅, Rumor 🔮, Past
 - Image dari URL web: `https://www.list-concert-tour.web.id/images/[id].jpeg`
 - Field lengkap: genre, harga, venue, promotor, lineup, sources

@@ -14,12 +14,14 @@ import { NewsletterScreen } from '../screens/NewsletterScreen';
 import { MoreScreen } from '../screens/MoreScreen';
 import { DetailScreen } from '../screens/DetailScreen';
 import { KaraokeScreen } from '../screens/KaraokeScreen';
+import { PassportScreen } from '../screens/PassportScreen';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const WishlistStack = createNativeStackNavigator();
 const CalendarStack = createNativeStackNavigator();
 const NewsletterStack = createNativeStackNavigator();
+const MoreStack = createNativeStackNavigator();
 
 function HomeStackNav() {
   return (
@@ -56,6 +58,15 @@ function NewsletterStackNav() {
     <NewsletterStack.Navigator screenOptions={{ headerShown: false }}>
       <NewsletterStack.Screen name="Newsletter" component={NewsletterScreen} />
     </NewsletterStack.Navigator>
+  );
+}
+
+function MoreStackNav() {
+  return (
+    <MoreStack.Navigator screenOptions={{ headerShown: false }}>
+      <MoreStack.Screen name="More" component={MoreScreen} />
+      <MoreStack.Screen name="Passport" component={PassportScreen} />
+    </MoreStack.Navigator>
   );
 }
 
@@ -115,7 +126,7 @@ export function AppNavigator() {
         <Tab.Screen name="WishlistTab" component={WishlistStackNav} options={{ title: t('wishlist') }} />
         <Tab.Screen name="CalendarTab" component={CalendarStackNav} options={{ title: t('calendar') }} />
         <Tab.Screen name="NewsletterTab" component={NewsletterStackNav} options={{ title: t('newsletter') }} />
-        <Tab.Screen name="MoreTab" component={MoreScreen} options={{ title: t('more') }} />
+        <Tab.Screen name="MoreTab" component={MoreStackNav} options={{ title: t('more') }} />
       </Tab.Navigator>
     </NavigationContainer>
   );

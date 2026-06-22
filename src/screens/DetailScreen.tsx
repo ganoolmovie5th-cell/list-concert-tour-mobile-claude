@@ -18,6 +18,7 @@ import { useGroupBuying, buildWaHrefGB } from '../hooks/useGroupBuying';
 import { useFanPhotos } from '../hooks/useFanPhotos';
 import { useConcertCheckin } from '../hooks/useConcertCheckin';
 import { useInAppChat } from '../hooks/useInAppChat';
+import { useLiveSetlist } from '../hooks/useLiveSetlist';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { ShareSheet } from '../components/ShareSheet';
 import { Toast } from '../components/Toast';
@@ -29,7 +30,7 @@ import { getGoogleCalendarUrl, isPast, timeAgo } from '../utils/helpers';
 import { useVoteCountsCtx } from '../context/VoteCountsContext';
 
 const { width } = Dimensions.get('window');
-type Tab = 'info' | 'setlist' | 'diskusi' | 'review';
+type Tab = 'info' | 'setlist' | 'diskusi' | 'review' | 'live';
 const GENRE_LABEL: Record<string, string> = {
   kpop: 'K-Pop', pop: 'Pop / R&B', rock: 'Rock / Metal', jazz: 'Jazz', indie: 'Indie / Festival',
 };
@@ -57,6 +58,12 @@ export function DetailScreen({ route, navigation }: any) {
   const { messages: chatMessages, myUid: chatMyUid, sendMessage: sendChatMsg } = useInAppChat(activeChatPostUid);
   const { getCount } = useVoteCountsCtx();
   const { going: globalGoing, interested: globalInterested } = getCount(concertId);
+
+  // Live Setlist
+  const { entries: liveEntries, loading: liveLoading, submitting: liveSubmitting, submit: submitLive, remove: removeLive, refresh: refreshLive } = useLiveSetlist(concertId);
+  const [liveSong, setLiveSong] = useState('');
+  const [liveSongNum, setLiveSongNum] = useState('');
+  const [liveName, setLiveName] = useState('');
 
   const [tab, setTab] = useState<Tab>('info');
   const [showShare, setShowShare] = useState(false);
@@ -251,11 +258,23 @@ export function DetailScreen({ route, navigation }: any) {
     { key: 'setlist', label: 'Setlist' },
     { key: 'diskusi', label: t('discussion') },
     { key: 'review', label: 'Review' },
+    ...(!past && !isRumor ? [{ key: 'live' as Tab, label: '🎙️ Live' }] : []),
   ];
 
   const statusColor = concert.confirmStatus === 'confirmed' ? (past ? colors.past : colors.confirmed) : colors.rumor;
   const statusBg = concert.confirmStatus === 'confirmed' ? (past ? colors.pastBg : colors.confirmedBg) : colors.rumorBg;
   const statusLabel = concert.confirmStatus === 'confirmed' ? (past ? '⏰ Past' : '✅ Confirmed') : '🔮 Rumor';
+
+  // Concert is happening today
+  const todayStr = new Date().toDateString();
+  const isLiveNow = !past && !isRumor && concert.rawDate.toDateString() === todayStr;
+
+  const handleSubmitLive = async () => {
+    if (!liveSong.trim()) return;
+    const ok = await submitLive(liveSong, parseInt(liveSongNum) || 1, liveName);
+    if (ok) { setLiveSong(''); setLiveSongNum(''); showToast('🎙️ Update terkirim!'); }
+    else showToast('Gagal mengirim. Coba lagi.', 'error');
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -1094,6 +1113,81 @@ export function DetailScreen({ route, navigation }: any) {
         )}
       </ScrollView>
 
+        {/* ─── LIVE SETLIST TAB ─── */}
+        {tab === 'live' && (
+          <View style={styles.tabContent}>
+            {/* Live Now banner */}
+            {isLiveNow ? (
+              <View style={[styles.liveBanner, { backgroundColor: '#ef444422', borderColor: '#ef444466' }]}>
+                <View style={styles.liveDot} />
+                <Text style={[styles.liveBannerText, { color: '#f87171' }]}>🔴 LIVE NOW — Konser sedang berlangsung hari ini!</Text>
+              </View>
+            ) : (
+              <View style={[styles.liveBanner, { backgroundColor: colors.accent + '18', borderColor: colors.accent + '44' }]}>
+                <Text style={[styles.liveBannerText, { color: colors.accent }]}>🎙️ Live Setlist Update — Submit lagu yang sedang diputar saat konser!</Text>
+              </View>
+            )}
+
+            {/* Submit form */}
+            <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>📤 Submit Update</Text>
+                <TouchableOpacity onPress={refreshLive}><Text style={{ fontSize: 18 }}>🔄</Text></TouchableOpacity>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput style={[styles.input, { flex: 1, backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="No. lagu" placeholderTextColor={colors.textSubtle} value={liveSongNum} onChangeText={setLiveSongNum} keyboardType="number-pad" />
+                <TextInput style={[styles.input, { flex: 3, backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="Nama lagu *" placeholderTextColor={colors.textSubtle} value={liveSong} onChangeText={setLiveSong} />
+              </View>
+              <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]} placeholder="Nama kamu (opsional)" placeholderTextColor={colors.textSubtle} value={liveName} onChangeText={setLiveName} />
+              <TouchableOpacity style={[styles.sendBtn, { backgroundColor: liveSubmitting ? colors.textSubtle : colors.accent, opacity: liveSubmitting ? 0.6 : 1 }]} onPress={handleSubmitLive} disabled={liveSubmitting}>
+                <Text style={styles.sendBtnText}>{liveSubmitting ? '⏳ Mengirim…' : '🎙️ Submit Lagu Sekarang'}</Text>
+              </TouchableOpacity>
+              <Text style={[styles.cardSub, { color: colors.textSubtle }]}>💡 Bantu sesama fans tahu lagu apa yang sedang dimainkan!</Text>
+            </View>
+
+            {/* Live feed */}
+            {liveLoading && liveEntries.length === 0 ? (
+              <View style={[styles.card, { backgroundColor: colors.surfaceElevated, alignItems: 'center' }]}>
+                <Text style={{ fontSize: 24 }}>⏳</Text>
+                <Text style={[styles.cardSub, { color: colors.textMuted }]}>Memuat live feed…</Text>
+              </View>
+            ) : liveEntries.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyEmoji}>🎙️</Text>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>Belum ada update. Jadilah yang pertama!</Text>
+              </View>
+            ) : (
+              <View style={[styles.card, { backgroundColor: colors.surfaceElevated, gap: 0 }]}>
+                <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 8 }]}>📋 Live Feed — {liveEntries.length} update</Text>
+                {liveEntries.map((entry, idx) => (
+                  <View key={entry.id} style={[styles.liveRow, { borderBottomColor: colors.border, backgroundColor: idx === 0 ? colors.accent + '10' : 'transparent' }]}>
+                    <View style={[styles.liveNum, { backgroundColor: idx === 0 ? colors.accent : colors.surfaceElevated }]}>
+                      <Text style={{ color: idx === 0 ? '#fff' : colors.textMuted, fontSize: 11, fontWeight: '700' }}>{entry.song_number || '—'}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.liveSong, { color: colors.text }]}>{idx === 0 ? '🎵 ' : ''}{entry.song_name}</Text>
+                      <Text style={[styles.liveBy, { color: colors.textSubtle }]}>by {entry.submitted_by} · {new Date(entry.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</Text>
+                    </View>
+                    {idx === 0 && (
+                      <View style={[styles.liveNowBadge, { backgroundColor: '#ef444422' }]}>
+                        <View style={styles.liveDot} />
+                        <Text style={{ color: '#f87171', fontSize: 9, fontWeight: '700' }}>NOW</Text>
+                      </View>
+                    )}
+                    {entry.is_own && (
+                      <TouchableOpacity onPress={() => removeLive(entry.id)} style={{ marginLeft: 6 }}>
+                        <Text style={{ fontSize: 14 }}>🗑️</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+      </ScrollView>
+
       <ShareSheet visible={showShare} concert={concert} onClose={() => setShowShare(false)} onCopied={() => showToast(t('linkCopied'))} />
       <Toast message={toast.message} visible={toast.visible} type={toast.type} />
       {showStory && (
@@ -1220,4 +1314,13 @@ const styles = StyleSheet.create({
   chatInput: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   chatInputField: { flex: 1, borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13 },
   chatSendBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  // Live Setlist
+  liveBanner: { borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  liveBannerText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', flexShrink: 0 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1 },
+  liveNum: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  liveSong: { fontSize: 14, fontWeight: '600' },
+  liveBy: { fontSize: 11, marginTop: 2 },
+  liveNowBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
 });
