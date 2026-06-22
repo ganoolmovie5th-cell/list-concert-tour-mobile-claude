@@ -183,6 +183,15 @@ async function apiFetch(token: string, path: string, opts: RequestInit = {}): Pr
   });
 }
 
+export async function apiGetMe(token: string): Promise<{ product: string } | null> {
+  try {
+    const r = await apiFetch(token, '/me');
+    if (!r.ok) return null;
+    const d = await r.json();
+    return { product: d.product || 'free' };
+  } catch { return null; }
+}
+
 export async function apiPlay(token: string, spotifyUri: string): Promise<{ ok: boolean; error?: string }> {
   try {
     const r = await apiFetch(token, '/me/player/play', {

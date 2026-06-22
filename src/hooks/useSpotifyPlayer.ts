@@ -12,7 +12,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import {
   buildAuthUrl, exchangeCode, getValidToken,
-  apiPlay, apiPause, apiResume, apiGetPlayback,
+  apiPlay, apiPause, apiResume, apiGetPlayback, apiGetMe,
   clearSession, REDIRECT_URI, SpPlayback,
 } from '../services/SpotifyService';
 
@@ -33,9 +33,10 @@ export function useSpotifyPlayer() {
     progressMs: 0, connecting: false, error: null,
   });
 
-  const tokenRef = useRef<string | null>(null);
-  const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const mounted  = useRef(true);
+  const tokenRef   = useRef<string | null>(null);
+  const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mounted    = useRef(true);
+  const isPremium  = useRef(false);
 
   // ── Init: cek token tersimpan ─────────────────────────────────────
   useEffect(() => {
@@ -88,6 +89,10 @@ export function useSpotifyPlayer() {
 
       if (token) {
         tokenRef.current = token;
+        // Cek Premium status
+        const me = await apiGetMe(token);
+        isPremium.current = me?.product === 'premium';
+        console.log('[Spotify] product:', me?.product);
         setS({ isConnected: true, connecting: false, error: null });
         console.log('[Spotify] ✅ Connected!');
       } else {
@@ -110,6 +115,13 @@ export function useSpotifyPlayer() {
   const playTrack = useCallback(async (spotifyId: string): Promise<boolean> => {
     const token = await ensureToken();
     if (!token) { setS({ error: 'Tidak terkoneksi ke Spotify.' }); return false; }
+
+    // Skip API call untuk Free account — cegah Spotify app terbuka tidak sengaja
+    if (!isPremium.current) {
+      setS({ error: '⭐ Fitur ini butuh Spotify Premium.' });
+      return false;
+    }
+
     const result = await apiPlay(token, `spotify:track:${spotifyId}`);
     if (result.ok && mounted.current) {
       setS({ isPlaying: true, progressMs: 0, error: null });
