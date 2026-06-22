@@ -8,7 +8,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Animated, ActivityIndicator,
+  StyleSheet, StatusBar, Animated, ActivityIndicator, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -266,17 +266,15 @@ export function KaraokeScreen({ route, navigation }: Props) {
                   </Text>
                 </View>
               )}
-              {(() => {
-                const trackUrl = spotifyTrackUrl(currentSong.spotifyId);
-                return trackUrl ? (
-                  <TouchableOpacity style={[styles.spotifyBtn, { backgroundColor: '#1DB95422', borderColor: '#1DB95444' }]}
-                    onPress={() => openSpotify(trackUrl)}>
-                    <Ionicons name="musical-notes" size={14} color="#1DB954" />
-                    <Text style={{ color: '#1DB954', fontSize: 12, fontWeight: '700' }}>Buka di Spotify</Text>
-                    <Ionicons name="open-outline" size={12} color="#1DB95488" />
-                  </TouchableOpacity>
-                ) : null;
-              })()}
+              {/* Tombol Spotify — hanya tampil jika tidak connected (manual fallback) */}
+              {!spotify.isConnected && currentSong?.spotifyId && (
+                <TouchableOpacity style={[styles.spotifyBtn, { backgroundColor: '#1DB95422', borderColor: '#1DB95444' }]}
+                  onPress={() => Linking.openURL(`https://open.spotify.com/track/${currentSong.spotifyId}`)}>
+                  <Ionicons name="musical-notes" size={14} color="#1DB954" />
+                  <Text style={{ color: '#1DB954', fontSize: 12, fontWeight: '700' }}>Buka di Spotify</Text>
+                  <Ionicons name="open-outline" size={12} color="#1DB95488" />
+                </TouchableOpacity>
+              )}
             </Animated.View>
 
 
@@ -325,9 +323,9 @@ export function KaraokeScreen({ route, navigation }: Props) {
             <Text style={[styles.setlistModeSub, { color: colors.textMuted }]}>
               Lirik belum tersedia untuk artis ini.
             </Text>
-            {spotifyArtistUrl() && (
+            {artistId && (
               <TouchableOpacity style={[styles.spotifyBtn, { backgroundColor: '#1DB95422', borderColor: '#1DB95444' }]}
-                onPress={() => openSpotify(spotifyArtistUrl())}>
+                onPress={() => Linking.openURL(`https://open.spotify.com/artist/${artistId}`)}>
                 <Ionicons name="musical-notes" size={14} color="#1DB954" />
                 <Text style={{ color: '#1DB954', fontSize: 13, fontWeight: '700' }}>Buka Artis di Spotify</Text>
                 <Ionicons name="open-outline" size={12} color="#1DB95488" />
