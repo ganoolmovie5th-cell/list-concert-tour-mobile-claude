@@ -1,107 +1,148 @@
 /**
- * KaraokeScreen — Lyrics / Setlist Karaoke Mode
- *
- * Fixes:
- * - Play button langsung kontrol auto-scroll (tidak perlu tombol Auto terpisah)
- * - Scroll resume dari posisi saat ini, bukan reset ke 0 saat pause/play
- * - Controls muncul juga di Setlist Mode (tanpa lirik)
- * - edges={['top','bottom']} agar controls tidak tertutup home indicator
+ * KaraokeScreen v3 — Proper karaoke experience
+ * - Highlighted active lyric line (baris aktif menonjol, lainnya redup)
+ * - Auto-advance per baris dengan interval + speed control
+ * - Tap baris untuk loncat ke baris itu
+ * - Tombol Spotify per lagu untuk buka audio
+ * - Instruksi cara pakai
  */
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Dimensions, StatusBar, Animated,
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet, StatusBar, Animated, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { LYRICS, SongLyrics } from '../data/lyrics';
-import { SETLISTS } from '../data/concerts';
+import { SETLISTS, SPOTIFY_ARTISTS } from '../data/concerts';
 
-const { width } = Dimensions.get('window');
+interface Props { route: any; navigation: any; }
 
-interface Props {
-  route: any;
-  navigation: any;
-}
+// ms per baris untuk setiap kecepatan
+const SPEED_MS: Record<string, number> = { '0.5x': 5000, '1x': 3000, '1.5x': 2000, '2x': 1500 };
+const SPEEDS = ['0.5x', '1x', '1.5x', '2x'] as const;
+// tinggi perkiraan tiap baris lirik (untuk auto-scroll)
+const LINE_H = 42;
+const TITLE_H = 160;
+
 
 export function KaraokeScreen({ route, navigation }: Props) {
   const { concertId, concertArtist } = route.params;
-  const { colors, isDark }            = useTheme();
+  const { colors, isDark } = useTheme();
 
-  const songs: SongLyrics[] = LYRICS[concertId] || [];
-  const setlistData          = SETLISTS[concertId] || [];
-
-  // Build allSetlist dari format { song, prediction? }
-  const allSetlist = setlistData.map((s: { song: string; prediction?: boolean }) => ({
-    title: s.song,
-    actual: !s.prediction,
+  const songs: SongLyrics[]   = LYRICS[concertId] || [];
+  const setlistData            = SETLISTS[concertId] || [];
+  const allSetlist             = setlistData.map((s: { song: string; prediction?: boolean }) => ({
+    title: s.song, actual: !s.prediction,
   }));
 
-  const [currentSongIdx, setCurrentSongIdx] = useState(0);
-  const [isPlaying, setIsPlaying]            = useState(false);
+  const [songIdx,      setSongIdx]      = useState(0);
+  const [lineIdx,      setLineIdx]      = useState(-1);   // -1 = belum mulai
+  const [isPlaying,    setIsPlaying]    = useState(false);
+  const [speed,        setSpeed]        = useState<string>('1x');
+  const [showHint,     setShowHint]     = useState(true);
 
-  const scrollRef         = useRef<ScrollView>(null);
-  const pulseAnim         = useRef(new Animated.Value(1)).current;
-  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Track posisi scroll saat ini — tidak reset saat pause/play
-  const currentOffsetRef  = useRef(0);
+  const scrollRef    = useRef<ScrollView>(null);
+  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim    = useRef(new Animated.Value(1)).current;
+  const scrollOffset = useRef(0);
 
-  const currentLyric = songs[currentSongIdx] || null;
-  const hasContent   = currentLyric !== null || allSetlist.length > 0;
+  const currentSong  = songs[songIdx] || null;
+  const lines        = currentSong?.lines || [];
+  const hasLyrics    = songs.length > 0;
+  const hasSetlist   = allSetlist.length > 0;
+
+  // Spotify URL helper
+  const spotifyTrackUrl = (id?: string) =>
+    id ? `https://open.spotify.com/track/${id}` : null;
+  const spotifyArtistUrl = () => {
+    const aid = SPOTIFY_ARTISTS[concertId];
+    return aid ? `https://open.spotify.com/artist/${aid}` : null;
+  };
+  const openSpotify = (url: string | null) => { if (url) Linking.openURL(url); };
 
 
-  // Track scroll position — resume dari posisi saat ini saat play lagi
-  const handleScroll = useCallback((e: any) => {
-    currentOffsetRef.current = e.nativeEvent.contentOffset.y;
+  // Auto-scroll ke baris aktif
+  const scrollToLine = useCallback((idx: number) => {
+    const y = Math.max(0, TITLE_H + idx * LINE_H - 200);
+    scrollRef.current?.scrollTo({ y, animated: true });
   }, []);
 
-  // Pulse animation
+  // Pulse animation saat playing
   useEffect(() => {
     if (isPlaying) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.04, duration: 700, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1,    duration: 700, useNativeDriver: true }),
-        ]),
-      ).start();
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.06, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 600, useNativeDriver: true }),
+      ])).start();
     } else {
       pulseAnim.stopAnimation();
-      Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      Animated.timing(pulseAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
     }
   }, [isPlaying]);
 
-  // Auto-scroll — mulai dari currentOffsetRef (bukan 0)
+  // Auto-advance per baris
   useEffect(() => {
-    if (isPlaying) {
-      scrollIntervalRef.current = setInterval(() => {
-        currentOffsetRef.current += 2;
-        scrollRef.current?.scrollTo({ y: currentOffsetRef.current, animated: true });
-      }, 100);
+    if (isPlaying && hasLyrics) {
+      timerRef.current = setInterval(() => {
+        setLineIdx(prev => {
+          const next = prev + 1;
+          if (next >= lines.length) {
+            setIsPlaying(false);
+            return prev;
+          }
+          scrollToLine(next);
+          return next;
+        });
+      }, SPEED_MS[speed]);
     } else {
-      if (scrollIntervalRef.current) {
-        clearInterval(scrollIntervalRef.current);
-        scrollIntervalRef.current = null;
-      }
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     }
-    return () => {
-      if (scrollIntervalRef.current) {
-        clearInterval(scrollIntervalRef.current);
-        scrollIntervalRef.current = null;
-      }
-    };
-  }, [isPlaying]);
+    return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
+  }, [isPlaying, speed, lines.length, hasLyrics, scrollToLine]);
 
-  // Ganti lagu — pause + scroll ke atas
+  // Auto-scroll setlist saat playing (tanpa lirik)
+  useEffect(() => {
+    if (isPlaying && !hasLyrics) {
+      const iv = setInterval(() => {
+        scrollOffset.current += 2;
+        scrollRef.current?.scrollTo({ y: scrollOffset.current, animated: true });
+      }, 100);
+      return () => clearInterval(iv);
+    }
+  }, [isPlaying, hasLyrics]);
+
+
+  // Ganti lagu — reset state
   const goToSong = useCallback((idx: number) => {
     setIsPlaying(false);
-    setCurrentSongIdx(idx);
-    currentOffsetRef.current = 0;
+    setSongIdx(idx);
+    setLineIdx(-1);
+    setShowHint(true);
+    scrollOffset.current = 0;
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, []);
 
-  const prevSong = useCallback(() => goToSong(Math.max(0, currentSongIdx - 1)), [currentSongIdx, goToSong]);
-  const nextSong = useCallback(() => goToSong(Math.min(songs.length - 1, currentSongIdx + 1)), [currentSongIdx, songs.length, goToSong]);
+  // Tap baris — loncat ke baris itu & mulai play
+  const tapLine = useCallback((idx: number) => {
+    setLineIdx(idx);
+    setIsPlaying(true);
+    setShowHint(false);
+    scrollToLine(idx);
+  }, [scrollToLine]);
+
+  // Toggle play/pause
+  const togglePlay = useCallback(() => {
+    setShowHint(false);
+    // Set lineIdx ke 0 dulu jika belum mulai — dipanggil SEBELUM setIsPlaying
+    if (!isPlaying && lineIdx < 0) setLineIdx(0);
+    setIsPlaying(p => !p);
+  }, [isPlaying, lineIdx]);
+
+  const cycleSpeed = () => {
+    setSpeed(s => SPEEDS[(SPEEDS.indexOf(s as any) + 1) % SPEEDS.length]);
+  };
 
   const bg = isDark ? '#0f0a1a' : '#f8f5ff';
 
@@ -109,52 +150,37 @@ export function KaraokeScreen({ route, navigation }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#0f0a1a" />
 
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>🎤 Karaoke Mode</Text>
-          <Text style={[styles.headerSub, { color: colors.textMuted }]} numberOfLines={1}>
-            {concertArtist}
-          </Text>
+          <Text style={[styles.headerSub, { color: colors.textMuted }]} numberOfLines={1}>{concertArtist}</Text>
         </View>
-        {/* Status badge — menggantikan tombol Auto yang membingungkan */}
-        <View style={[styles.statusBadge, { backgroundColor: isPlaying ? colors.accent + '22' : colors.surfaceElevated }]}>
-          <Ionicons
-            name={isPlaying ? 'musical-notes' : 'musical-notes-outline'}
-            size={13}
-            color={isPlaying ? colors.accent : colors.textMuted}
-          />
-          <Text style={[styles.statusText, { color: isPlaying ? colors.accent : colors.textMuted }]}>
-            {isPlaying ? 'Playing' : 'Paused'}
-          </Text>
-        </View>
+        {/* Speed control */}
+        {hasLyrics && (
+          <TouchableOpacity onPress={cycleSpeed}
+            style={[styles.speedBtn, { backgroundColor: colors.accent + '22', borderColor: colors.accent + '44' }]}>
+            <Text style={[styles.speedText, { color: colors.accent }]}>{speed}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
 
-      {/* Song tabs — hanya untuk mode lirik */}
-      {songs.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.songTabs}
-          style={{ flexGrow: 0 }}
-        >
+      {/* ── Song tabs ── */}
+      {hasLyrics && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.songTabs} style={{ flexGrow: 0 }}>
           {songs.map((s, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[
-                styles.songTab,
-                {
-                  backgroundColor: i === currentSongIdx ? colors.accent : colors.surfaceElevated,
-                  borderColor: i === currentSongIdx ? colors.accent : colors.border,
-                },
-              ]}
-              onPress={() => goToSong(i)}
-            >
-              <Text style={[styles.songTabText, { color: i === currentSongIdx ? '#fff' : colors.textMuted }]} numberOfLines={1}>
+            <TouchableOpacity key={i}
+              style={[styles.songTab, {
+                backgroundColor: i === songIdx ? colors.accent : colors.surfaceElevated,
+                borderColor: i === songIdx ? colors.accent : colors.border,
+              }]}
+              onPress={() => goToSong(i)}>
+              <Text style={[styles.songTabText, { color: i === songIdx ? '#fff' : colors.textMuted }]} numberOfLines={1}>
                 {i + 1}. {s.title}
               </Text>
             </TouchableOpacity>
@@ -162,73 +188,118 @@ export function KaraokeScreen({ route, navigation }: Props) {
         </ScrollView>
       )}
 
-      {/* Lyrics / Setlist area */}
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={styles.lyricsContainer}
+      {/* ── Instruksi (muncul saat belum mulai) ── */}
+      {showHint && hasLyrics && (
+        <View style={[styles.hintBox, { backgroundColor: colors.accent + '15', borderColor: colors.accent + '33' }]}>
+          <Text style={[styles.hintTitle, { color: colors.accent }]}>Cara pakai Karaoke Mode</Text>
+          <Text style={[styles.hintStep, { color: colors.textMuted }]}>
+            1️⃣  Buka lagu di Spotify (tombol di bawah){'\n'}
+            2️⃣  Tekan ▶ Play lalu ikuti lirik yang menyala{'\n'}
+            3️⃣  Ketuk baris lirik mana saja untuk loncat ke sana{'\n'}
+            4️⃣  Atur kecepatan pakai tombol {speed} di kanan atas
+          </Text>
+        </View>
+      )}
+
+      {/* ── Lyrics / Setlist ── */}
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.lyricsContainer}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={100}
-      >
-        {currentLyric ? (
-          /* ── MODE LIRIK ── */
+        onScroll={e => { scrollOffset.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={100}>
+
+        {hasLyrics && currentSong ? (
           <>
-            <Animated.View style={[styles.songTitleWrap, { transform: [{ scale: pulseAnim }] }]}>
-              <Text style={[styles.songTitle, { color: colors.accent }]}>{currentLyric.title}</Text>
-              <Text style={[styles.songArtist, { color: colors.textMuted }]}>{currentLyric.artist}</Text>
+            {/* Judul lagu + Spotify button */}
+            <Animated.View style={[styles.songTitleWrap, { transform: [{ scale: isPlaying ? pulseAnim : 1 }] }]}>
+              <Text style={[styles.songTitle, { color: colors.accent }]}>{currentSong.title}</Text>
+              <Text style={[styles.songArtist, { color: colors.textMuted }]}>{currentSong.artist}</Text>
               {isPlaying && (
-                <View style={[styles.nowPlayingBadge, { backgroundColor: colors.accent + '22' }]}>
-                  <Text style={{ fontSize: 11, color: colors.accent, fontWeight: '700', letterSpacing: 1 }}>
-                    ♪  NOW PLAYING  ♪
+                <View style={[styles.nowBadge, { backgroundColor: colors.accent + '22' }]}>
+                  <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>
+                    ♪ NOW PLAYING ♪
                   </Text>
                 </View>
               )}
+              {(() => {
+                const trackUrl = spotifyTrackUrl(currentSong.spotifyId);
+                return trackUrl ? (
+                  <TouchableOpacity style={[styles.spotifyBtn, { backgroundColor: '#1DB95422', borderColor: '#1DB95444' }]}
+                    onPress={() => openSpotify(trackUrl)}>
+                    <Ionicons name="musical-notes" size={14} color="#1DB954" />
+                    <Text style={{ color: '#1DB954', fontSize: 12, fontWeight: '700' }}>Buka di Spotify</Text>
+                    <Ionicons name="open-outline" size={12} color="#1DB95488" />
+                  </TouchableOpacity>
+                ) : null;
+              })()}
             </Animated.View>
 
+
+            {/* Baris lirik — baris aktif menonjol, lainnya redup */}
             <View style={styles.lyricsBlock}>
-              {currentLyric.lines.map((line, i) => (
-                <Text
-                  key={i}
-                  style={[
-                    styles.lyricLine,
-                    {
-                      color: line.text.startsWith('—') || line.text.startsWith('🎸') || line.text.startsWith('✨')
-                        ? colors.accent
-                        : colors.text,
-                      fontSize: line.text === '' ? 8 : 18,
-                      opacity: line.text === '' ? 0 : 1,
-                    },
-                  ]}
-                >
-                  {line.text}
-                </Text>
-              ))}
+              {lines.map((line, i) => {
+                const isActive  = i === lineIdx;
+                const isPast    = i < lineIdx;
+                const isSection = line.text.startsWith('—') || line.text.startsWith('🎸') || line.text.startsWith('✨');
+                const isEmpty   = line.text === '';
+
+                if (isEmpty) return <View key={i} style={{ height: 16 }} />;
+
+                return (
+                  <TouchableOpacity key={i} onPress={() => tapLine(i)} activeOpacity={0.7}>
+                    {isActive ? (
+                      /* Baris aktif — highlight penuh */
+                      <Animated.View style={[styles.activeLineWrap, { backgroundColor: colors.accent + '22', transform: [{ scale: pulseAnim }] }]}>
+                        <Text style={[styles.activeLine, { color: isSection ? '#fff' : colors.accent }]}>
+                          {line.text}
+                        </Text>
+                      </Animated.View>
+                    ) : (
+                      /* Baris lain — redup */
+                      <Text style={[styles.lyricLine, {
+                        color: isSection ? colors.accent : colors.text,
+                        opacity: isPast ? 0.35 : (lineIdx < 0 ? 0.75 : 0.5),
+                        fontSize: isSection ? 13 : 17,
+                      }]}>
+                        {line.text}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+              {/* Padding akhir + pesan selesai */}
+              {lineIdx >= lines.length - 1 && lineIdx >= 0 && (
+                <Text style={[styles.endMsg, { color: colors.accent }]}>🎤 Selesai!</Text>
+              )}
             </View>
           </>
         ) : (
-          /* ── SETLIST MODE (tanpa lirik) ── */
+          /* ── Setlist Mode (tanpa lirik) ── */
           <View style={styles.setlistMode}>
             <Text style={[styles.setlistModeTitle, { color: colors.text }]}>🎵 Setlist Mode</Text>
             <Text style={[styles.setlistModeSub, { color: colors.textMuted }]}>
-              Lirik belum tersedia untuk artis ini.{'\n'}
-              {isPlaying ? '▶ Auto-scroll aktif — tekan pause untuk berhenti.' : 'Tekan ▶ Play untuk auto-scroll setlist.'}
+              Lirik belum tersedia untuk artis ini.
             </Text>
-
-            {allSetlist.length > 0 ? (
-              allSetlist.map((s, i) => (
-                <View key={i} style={[styles.setlistItem, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
-                  <View style={[styles.setlistNum, { backgroundColor: s.actual ? colors.confirmed + '22' : colors.rumor + '22' }]}>
-                    <Text style={[styles.setlistNumText, { color: s.actual ? colors.confirmed : colors.rumor }]}>{i + 1}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.setlistTitle, { color: colors.text }]}>{s.title}</Text>
-                    <Text style={[styles.setlistType, { color: s.actual ? colors.confirmed : colors.rumor }]}>
-                      {s.actual ? '✅ Aktual' : '🔮 Prediksi'}
-                    </Text>
-                  </View>
+            {spotifyArtistUrl() && (
+              <TouchableOpacity style={[styles.spotifyBtn, { backgroundColor: '#1DB95422', borderColor: '#1DB95444' }]}
+                onPress={() => openSpotify(spotifyArtistUrl())}>
+                <Ionicons name="musical-notes" size={14} color="#1DB954" />
+                <Text style={{ color: '#1DB954', fontSize: 13, fontWeight: '700' }}>Buka Artis di Spotify</Text>
+                <Ionicons name="open-outline" size={12} color="#1DB95488" />
+              </TouchableOpacity>
+            )}
+            {hasSetlist ? allSetlist.map((s, i) => (
+              <View key={i} style={[styles.setlistItem, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
+                <View style={[styles.setlistNum, { backgroundColor: s.actual ? colors.confirmed + '22' : colors.rumor + '22' }]}>
+                  <Text style={[styles.setlistNumText, { color: s.actual ? colors.confirmed : colors.rumor }]}>{i + 1}</Text>
                 </View>
-              ))
-            ) : (
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.setlistTitle, { color: colors.text }]}>{s.title}</Text>
+                  <Text style={[styles.setlistType, { color: s.actual ? colors.confirmed : colors.rumor }]}>
+                    {s.actual ? '✅ Aktual' : '🔮 Prediksi'}
+                  </Text>
+                </View>
+              </View>
+            )) : (
               <Text style={[styles.noData, { color: colors.textSubtle }]}>Setlist belum tersedia</Text>
             )}
           </View>
@@ -236,76 +307,73 @@ export function KaraokeScreen({ route, navigation }: Props) {
       </ScrollView>
 
 
-      {/* Controls — tampil untuk lirik DAN setlist mode (selama ada konten) */}
-      {hasContent && (
-        <View style={[styles.controls, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-          {/* Prev — hanya untuk mode lirik */}
-          {songs.length > 0 ? (
-            <TouchableOpacity
-              onPress={prevSong}
-              disabled={currentSongIdx === 0}
-              style={[styles.controlBtn, { opacity: currentSongIdx === 0 ? 0.3 : 1 }]}
-            >
-              <Ionicons name="play-skip-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.controlBtn} />
-          )}
-
-          {/* Play / Pause — kontrol auto-scroll langsung */}
-          <TouchableOpacity
-            onPress={() => setIsPlaying(p => !p)}
-            style={[styles.playBtn, { backgroundColor: colors.accent }]}
-          >
-            <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
+      {/* ── Controls ── */}
+      <View style={[styles.controls, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        {/* Prev song */}
+        {hasLyrics ? (
+          <TouchableOpacity onPress={() => goToSong(Math.max(0, songIdx - 1))}
+            disabled={songIdx === 0}
+            style={[styles.controlBtn, { opacity: songIdx === 0 ? 0.3 : 1 }]}>
+            <Ionicons name="play-skip-back" size={22} color={colors.text} />
           </TouchableOpacity>
+        ) : <View style={styles.controlBtn} />}
 
-          {/* Next — hanya untuk mode lirik */}
-          {songs.length > 0 ? (
-            <TouchableOpacity
-              onPress={nextSong}
-              disabled={currentSongIdx === songs.length - 1}
-              style={[styles.controlBtn, { opacity: currentSongIdx === songs.length - 1 ? 0.3 : 1 }]}
-            >
-              <Ionicons name="play-skip-forward" size={24} color={colors.text} />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.controlBtn} />
-          )}
-        </View>
-      )}
+        {/* Play / Pause */}
+        <TouchableOpacity onPress={togglePlay}
+          style={[styles.playBtn, { backgroundColor: isPlaying ? colors.accent : colors.accent + 'dd' }]}>
+          <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Next song */}
+        {hasLyrics ? (
+          <TouchableOpacity onPress={() => goToSong(Math.min(songs.length - 1, songIdx + 1))}
+            disabled={songIdx === songs.length - 1}
+            style={[styles.controlBtn, { opacity: songIdx === songs.length - 1 ? 0.3 : 1 }]}>
+            <Ionicons name="play-skip-forward" size={22} color={colors.text} />
+          </TouchableOpacity>
+        ) : <View style={styles.controlBtn} />}
+      </View>
+
     </SafeAreaView>
   );
 }
 
+
 const styles = StyleSheet.create({
-  container:        { flex: 1 },
-  header:           { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-  backBtn:          { padding: 4 },
-  headerTitle:      { fontSize: 16, fontWeight: '800' },
-  headerSub:        { fontSize: 12, marginTop: 1 },
-  statusBadge:      { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  statusText:       { fontSize: 11, fontWeight: '600' },
-  songTabs:         { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  songTab:          { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, maxWidth: 160 },
-  songTabText:      { fontSize: 12, fontWeight: '600' },
-  lyricsContainer:  { paddingHorizontal: 24, paddingBottom: 120, paddingTop: 20 },
-  songTitleWrap:    { alignItems: 'center', marginBottom: 32 },
-  songTitle:        { fontSize: 24, fontWeight: '800', textAlign: 'center', marginBottom: 6 },
-  songArtist:       { fontSize: 14 },
-  nowPlayingBadge:  { marginTop: 8, paddingHorizontal: 14, paddingVertical: 5, borderRadius: 99 },
-  lyricsBlock:      { gap: 8 },
-  lyricLine:        { textAlign: 'center', lineHeight: 32, letterSpacing: 0.3 },
-  setlistMode:      { alignItems: 'center', paddingTop: 20, gap: 12, width: '100%' },
-  setlistModeTitle: { fontSize: 20, fontWeight: '800' },
-  setlistModeSub:   { fontSize: 14, textAlign: 'center', lineHeight: 22 },
-  setlistItem:      { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', padding: 14, borderRadius: 12, borderWidth: 1 },
-  setlistNum:       { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  setlistNumText:   { fontSize: 14, fontWeight: '800' },
-  setlistTitle:     { fontSize: 15, fontWeight: '600', marginBottom: 2 },
-  setlistType:      { fontSize: 11 },
-  noData:           { fontSize: 14, marginTop: 20 },
-  controls:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, paddingVertical: 16, borderTopWidth: 1 },
-  controlBtn:       { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  playBtn:          { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', shadowColor: '#a855f7', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 },
+  container:       { flex: 1 },
+  header:          { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  backBtn:         { padding: 4 },
+  headerTitle:     { fontSize: 16, fontWeight: '800' },
+  headerSub:       { fontSize: 12, marginTop: 1 },
+  speedBtn:        { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
+  speedText:       { fontSize: 12, fontWeight: '800' },
+  songTabs:        { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  songTab:         { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, maxWidth: 160 },
+  songTabText:     { fontSize: 12, fontWeight: '600' },
+  hintBox:         { marginHorizontal: 16, marginTop: 8, marginBottom: 4, padding: 14, borderRadius: 14, borderWidth: 1 },
+  hintTitle:       { fontSize: 13, fontWeight: '800', marginBottom: 6 },
+  hintStep:        { fontSize: 12, lineHeight: 22 },
+  lyricsContainer: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 16 },
+  songTitleWrap:   { alignItems: 'center', marginBottom: 28, gap: 4 },
+  songTitle:       { fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  songArtist:      { fontSize: 13 },
+  nowBadge:        { marginTop: 6, paddingHorizontal: 14, paddingVertical: 4, borderRadius: 99 },
+  spotifyBtn:      { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
+  lyricsBlock:     { gap: 4 },
+  activeLineWrap:  { borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, marginVertical: 4 },
+  activeLine:      { fontSize: 22, fontWeight: '800', textAlign: 'center', lineHeight: 32 },
+  lyricLine:       { textAlign: 'center', lineHeight: 30, fontSize: 17, paddingVertical: 4 },
+  endMsg:          { textAlign: 'center', fontSize: 20, fontWeight: '800', marginTop: 24, paddingBottom: 20 },
+  setlistMode:     { alignItems: 'center', paddingTop: 16, gap: 12, width: '100%' },
+  setlistModeTitle:{ fontSize: 20, fontWeight: '800' },
+  setlistModeSub:  { fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  setlistItem:     { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', padding: 14, borderRadius: 12, borderWidth: 1 },
+  setlistNum:      { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  setlistNumText:  { fontSize: 14, fontWeight: '800' },
+  setlistTitle:    { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+  setlistType:     { fontSize: 11 },
+  noData:          { fontSize: 14, marginTop: 20 },
+  controls:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, paddingVertical: 14, borderTopWidth: 1 },
+  controlBtn:      { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  playBtn:         { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', shadowColor: '#a855f7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 },
 });
