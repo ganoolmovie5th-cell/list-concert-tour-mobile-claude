@@ -65,8 +65,20 @@ export function useSpotifyPlayer() {
   // ── Auth ──────────────────────────────────────────────────────────
   const connect = useCallback(async () => {
     setS({ connecting: true, error: null });
-    const url = await buildAuthUrl();
-    Linking.openURL(url);
+    try {
+      const url = await buildAuthUrl();
+      console.log('[Spotify] Auth URL:', url.slice(0, 80) + '...');
+
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) {
+        setS({ connecting: false, error: 'Tidak bisa membuka browser. Pastikan ada browser terinstall.' });
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e: any) {
+      console.error('[Spotify] connect error:', e);
+      setS({ connecting: false, error: `Gagal membuka browser: ${e?.message || 'Unknown error'}` });
+    }
   }, []);
 
   const disconnect = useCallback(async () => {

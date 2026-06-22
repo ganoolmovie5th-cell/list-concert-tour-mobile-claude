@@ -93,12 +93,18 @@ export async function buildAuthUrl(): Promise<string> {
   const verifier  = genVerifier();
   const challenge = genChallenge(verifier);
   await AsyncStorage.setItem(K_VERIFIER, verifier);
-  const p = new URLSearchParams({
-    response_type: 'code', client_id: CLIENT_ID,
-    scope: SCOPES, redirect_uri: REDIRECT_URI,
-    code_challenge_method: 'S256', code_challenge: challenge,
-  });
-  return `https://accounts.spotify.com/authorize?${p.toString()}`;
+
+  // Manual string build sebagai fallback jika URLSearchParams bermasalah
+  const params = [
+    `response_type=code`,
+    `client_id=${encodeURIComponent(CLIENT_ID)}`,
+    `scope=${encodeURIComponent(SCOPES)}`,
+    `redirect_uri=${encodeURIComponent(REDIRECT_URI)}`,
+    `code_challenge_method=S256`,
+    `code_challenge=${encodeURIComponent(challenge)}`,
+  ].join('&');
+
+  return `https://accounts.spotify.com/authorize?${params}`;
 }
 
 // ── Token exchange ────────────────────────────────────────────────
