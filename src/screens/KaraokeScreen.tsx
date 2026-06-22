@@ -8,13 +8,13 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Animated, ActivityIndicator, Linking,
+  StyleSheet, StatusBar, Animated, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { LYRICS, SongLyrics } from '../data/lyrics';
-import { SETLISTS, SPOTIFY_ARTISTS } from '../data/concerts';
+import { SETLISTS } from '../data/concerts';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
 
 interface Props { route: any; navigation: any; }
@@ -50,7 +50,6 @@ export function KaraokeScreen({ route, navigation }: Props) {
   const lines       = currentSong?.lines || [];
   const hasLyrics   = songs.length > 0;
   const hasSetlist  = allSetlist.length > 0;
-  const artistId    = SPOTIFY_ARTISTS[concertId];
 
   // ── Spotify player ────────────────────────────────────────────────
   const spotify = useSpotifyPlayer();
@@ -239,10 +238,10 @@ export function KaraokeScreen({ route, navigation }: Props) {
         <View style={[styles.hintBox, { backgroundColor: colors.accent + '15', borderColor: colors.accent + '33' }]}>
           <Text style={[styles.hintTitle, { color: colors.accent }]}>Cara pakai Karaoke Mode</Text>
           <Text style={[styles.hintStep, { color: colors.textMuted }]}>
-            1️⃣  Buka lagu di Spotify (tombol di bawah){'\n'}
-            2️⃣  Tekan ▶ Play lalu ikuti lirik yang menyala{'\n'}
-            3️⃣  Ketuk baris lirik mana saja untuk loncat ke sana{'\n'}
-            4️⃣  Atur kecepatan pakai tombol {speed} di kanan atas
+            1️⃣  Tekan ▶ Play — lirik menyala &amp; bergerak otomatis{'\n'}
+            2️⃣  Ketuk baris mana saja untuk loncat ke sana{'\n'}
+            3️⃣  Atur kecepatan dengan tombol <Text style={{ color: colors.accent, fontWeight: '700' }}>{speed}</Text> di kanan atas{'\n'}
+            4️⃣  Punya Spotify Premium? Hubungkan di atas untuk audio
           </Text>
         </View>
       )}
@@ -265,15 +264,6 @@ export function KaraokeScreen({ route, navigation }: Props) {
                     ♪ NOW PLAYING ♪
                   </Text>
                 </View>
-              )}
-              {/* Tombol Spotify — hanya tampil jika tidak connected (manual fallback) */}
-              {!spotify.isConnected && currentSong?.spotifyId && (
-                <TouchableOpacity style={[styles.spotifyBtn, { backgroundColor: '#1DB95422', borderColor: '#1DB95444' }]}
-                  onPress={() => Linking.openURL(`https://open.spotify.com/track/${currentSong.spotifyId}`)}>
-                  <Ionicons name="musical-notes" size={14} color="#1DB954" />
-                  <Text style={{ color: '#1DB954', fontSize: 12, fontWeight: '700' }}>Buka di Spotify</Text>
-                  <Ionicons name="open-outline" size={12} color="#1DB95488" />
-                </TouchableOpacity>
               )}
             </Animated.View>
 
@@ -323,14 +313,6 @@ export function KaraokeScreen({ route, navigation }: Props) {
             <Text style={[styles.setlistModeSub, { color: colors.textMuted }]}>
               Lirik belum tersedia untuk artis ini.
             </Text>
-            {artistId && (
-              <TouchableOpacity style={[styles.spotifyBtn, { backgroundColor: '#1DB95422', borderColor: '#1DB95444' }]}
-                onPress={() => Linking.openURL(`https://open.spotify.com/artist/${artistId}`)}>
-                <Ionicons name="musical-notes" size={14} color="#1DB954" />
-                <Text style={{ color: '#1DB954', fontSize: 13, fontWeight: '700' }}>Buka Artis di Spotify</Text>
-                <Ionicons name="open-outline" size={12} color="#1DB95488" />
-              </TouchableOpacity>
-            )}
             {hasSetlist ? allSetlist.map((s, i) => (
               <View key={i} style={[styles.setlistItem, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
                 <View style={[styles.setlistNum, { backgroundColor: s.actual ? colors.confirmed + '22' : colors.rumor + '22' }]}>
@@ -402,7 +384,6 @@ const styles = StyleSheet.create({
   songTitle:       { fontSize: 22, fontWeight: '800', textAlign: 'center' },
   songArtist:      { fontSize: 13 },
   nowBadge:        { marginTop: 6, paddingHorizontal: 14, paddingVertical: 4, borderRadius: 99 },
-  spotifyBtn:      { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
   lyricsBlock:     { gap: 4 },
   activeLineWrap:  { borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, marginVertical: 4 },
   activeLine:      { fontSize: 22, fontWeight: '800', textAlign: 'center', lineHeight: 32 },
