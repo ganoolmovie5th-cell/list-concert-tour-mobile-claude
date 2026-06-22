@@ -119,6 +119,10 @@ Paket yang ditambahkan (perlu `npm install`):
 | Concert Passport | `PassportScreen.tsx` | Stamps grid, achievement badges, genre stats, progress bar — pakai `useBeenThere` + `CONCERTS.filter(isPast)` |
 | Live Setlist Update | `useLiveSetlist.ts`, `DetailScreen.tsx` | Tab 🎙️ Live di DetailScreen (non-past, non-rumor); polling 10s, submit/delete, isLiveNow badge |
 
+### Fix Penting (session ini)
+- **DetailScreen JSX fix** — Live Setlist tab sempat disisipkan *setelah* `</ScrollView>` sehingga menyebabkan `SyntaxError: Expected corresponding JSX closing tag for <SafeAreaView>`. Fix: hapus `</ScrollView>` yang berlebih agar semua tab berada di dalam `<ScrollView>` yang sama.
+- **Catatan:** Pastikan semua tab content berada DI DALAM `<ScrollView>` utama DetailScreen — jangan inject JSX setelah closing tag-nya.
+
 ### Supabase Tables Baru (run di SQL Editor):
 ```sql
 CREATE TABLE IF NOT EXISTS gb_chat (
@@ -197,6 +201,7 @@ type:    r.type    || 'jual',   // TicketMarket only
 | Check-in: logic terbalik (past bisa check-in, upcoming skip GPS) | Rewrite: block past/rumor/far-future, wajib GPS 1km hari-H |
 | DetailScreen: double Spotify button | Hapus pre-concert playlist card |
 | DetailScreen: double Google Maps | Hapus tombol Maps di info rows, keep di seat map |
+| DetailScreen: JSX `Expected closing tag for <SafeAreaView>` | Live Setlist tab disisipkan setelah `</ScrollView>` — fix: hapus extra `</ScrollView>` agar live tab tetap di dalam ScrollView |
 
 
 - Jangan buat PR — push langsung ke main

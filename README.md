@@ -79,8 +79,8 @@ FOR INSERT WITH CHECK (bucket_id = 'fan-photos');
 
 ### 📊 Data Konser
 - **40 konser** 2025–2027 — **selalu sync dari web repo** (`app.js` = source of truth)
-- 🎟️ **Concert Passport** — lihat semua konser yang pernah dihadiri sebagai passport stamps, achievement badges, genre stats
-- 🎙️ **Live Setlist Update** — crowdsource lagu yang sedang diputar saat konser, polling 10s, submit/delete milik sendiri
+- 🎟️ **Concert Passport** — lihat semua konser yang pernah dihadiri sebagai passport stamps, achievement badges, genre stats. Akses dari tab More → Concert Passport.
+- 🎙️ **Live Setlist Update** — crowdsource lagu yang sedang diputar saat konser, polling Supabase 10s, submit/delete milik sendiri. Tab "🎙️ Live" di DetailScreen (non-past, non-rumor). Banner 🔴 LIVE NOW otomatis jika konser hari ini.
 - Status: Confirmed ✅, Rumor 🔮, Past
 - Image dari URL web: `https://www.list-concert-tour.web.id/images/[id].jpeg`
 - Field lengkap: genre, harga, venue, promotor, lineup, sources
