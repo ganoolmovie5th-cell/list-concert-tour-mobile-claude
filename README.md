@@ -18,6 +18,7 @@ Versi mobile dari [list-concert-tour.web.id](https://www.list-concert-tour.web.i
 | Media | expo-image-picker + expo-image-manipulator + expo-file-system |
 | Notifications | expo-notifications (push notif + reminders H-7, H-1) |
 | Location | expo-location (concert check-in geolocation) |
+| Browser | expo-web-browser (Spotify OAuth) |
 | Database | Supabase (PostgreSQL REST API) — sync web & mobile |
 | Storage | Supabase Storage (foto fans) |
 
@@ -181,8 +182,9 @@ src/
 | Concert Playlist | `DetailScreen.tsx` | Link Spotify dari DetailScreen |
 | Offline Mode | `useNetworkStatus.ts`, `OfflineBanner.tsx` | Probe tiap 30s |
 | Story Template | `StoryCard.tsx` | Share ke IG/WA/Telegram |
-| Karaoke Mode | `KaraokeScreen.tsx`, `lyrics.ts` | 8 artis, fullscreen |
-| Concert Check-in | `useConcertCheckin.ts` | GPS radius 1km |
+| Karaoke Mode | `KaraokeScreen.tsx`, `lyrics.ts` | Lirik 8 artis, highlight baris aktif, auto-advance, speed control |
+| Concert Check-in | `useConcertCheckin.ts` | GPS radius 1km, hanya hari-H confirmed |
+| Spotify OAuth + Playback | `SpotifyService.ts`, `useSpotifyPlayer.ts` | PKCE, expo-web-browser, Premium only |
 
 ### Supabase Tables Baru (run di SQL Editor):
 ```sql

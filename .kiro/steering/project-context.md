@@ -70,15 +70,33 @@ Files: <file yang diubah selain README & steering>
 
 ## Paket (package.json)
 
-Paket baru yang ditambahkan Juni 2026 (perlu `npm install`):
+Paket yang ditambahkan (perlu `npm install`):
 - `expo-notifications ~0.29.14` — Push notifications & reminders
 - `expo-location ~18.0.9` — Concert check-in GPS
+- `expo-web-browser ~15.0.11` — Spotify OAuth (openAuthSessionAsync)
 
-Lazy import digunakan agar tidak crash jika belum install:
-```typescript
-let Notifications: any = null;
-try { Notifications = require('expo-notifications'); } catch {}
-```
+---
+
+## Spotify OAuth (PKCE)
+
+| Item | Value |
+|---|---|
+| Client ID | `bc23ee30bdb948b483cd1af6ba321cd1` |
+| Redirect URI | `concertid://spotify-auth` |
+| Scopes | `user-read-playback-state`, `user-modify-playback-state`, `user-read-currently-playing` |
+| Flow | PKCE — pure-JS SHA256 (tanpa `crypto.subtle`) |
+| Web fallback | `https://www.list-concert-tour.web.id/spotify-callback` (registered di Spotify dashboard) |
+
+### File Spotify:
+- `src/services/SpotifyService.ts` — OAuth PKCE + Web API helpers
+- `src/hooks/useSpotifyPlayer.ts` — connect/disconnect/play/pause/poll
+
+### Catatan:
+- `crypto.getRandomValues` tidak tersedia di Hermes → pakai `Math.random()` untuk verifier
+- `crypto.subtle` tidak tersedia → pure-JS SHA256 (`sha256Bytes()` di SpotifyService)
+- `WebBrowser.openAuthSessionAsync` intercept `concertid://` tanpa perlu scheme terdaftar di OS
+- Premium check via `GET /me` → skip API call untuk Free account (cegah Spotify app terbuka)
+- Playback control (play/pause) hanya untuk **Spotify Premium**
 
 ---
 
@@ -96,6 +114,7 @@ try { Notifications = require('expo-notifications'); } catch {}
 | Story Template | `StoryCard.tsx` | Share ke IG/WA/Telegram |
 | Karaoke Mode | `KaraokeScreen.tsx`, `lyrics.ts` | Lirik 8 artis, fullscreen |
 | Concert Check-in | `useConcertCheckin.ts` | GPS + Supabase `concert_checkins` |
+| Spotify OAuth | `SpotifyService.ts`, `useSpotifyPlayer.ts` | PKCE + expo-web-browser, Premium only playback |
 
 ### Supabase Tables Baru (run di SQL Editor):
 ```sql
@@ -153,7 +172,24 @@ type:    r.type    || 'jual',   // TicketMarket only
 
 ---
 
-## Hal yang TIDAK Perlu Dilakukan
+## Bug Fixes (Juni 2026 — session ini)
+
+| Bug | Fix |
+|---|---|
+| Karaoke: `scrollOffset` tidak terdefinisi | Rename → `scrollOff` konsisten |
+| Karaoke: `spotifyTrackUrl` / `openSpotify` ReferenceError | Hapus fungsi lama, pakai `Linking.openURL` langsung |
+| Karaoke: play + auto-scroll terpisah (dua tombol) | Merge jadi satu tombol Play |
+| Karaoke: offset reset ke 0 saat pause/resume | Track posisi via `currentOffsetRef` + `onScroll` |
+| Karaoke: controls tidak muncul di Setlist Mode | `{hasContent && <Controls/>}` |
+| Spotify: `response_type=token` (implicit) ditolak | Ganti ke PKCE (`response_type=code`) |
+| Spotify: `crypto.getRandomValues` tidak ada di Hermes | Ganti ke `Math.random()` |
+| Spotify: `concertid://` tidak terbuka di Expo Go | `expo-web-browser openAuthSessionAsync` intercept |
+| Spotify Free: API call trigger Spotify app terbuka | Cek Premium via `GET /me` sebelum `apiPlay` |
+| Check-in: logic terbalik (past bisa check-in, upcoming skip GPS) | Rewrite: block past/rumor/far-future, wajib GPS 1km hari-H |
+| DetailScreen: double Spotify button | Hapus pre-concert playlist card |
+| DetailScreen: double Google Maps | Hapus tombol Maps di info rows, keep di seat map |
+
+
 - Jangan buat PR — push langsung ke main
 - Jangan edit `concerts.ts` manual — sync dari `app.js` web
 - Jangan pakai `cid_going_v2` dll — harus `cid_going`
