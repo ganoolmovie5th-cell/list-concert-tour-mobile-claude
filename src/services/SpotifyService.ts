@@ -1,22 +1,28 @@
 /**
  * SpotifyService.ts — Spotify OAuth PKCE + Web API
- * Pure-JS SHA256 — tidak butuh crypto.subtle, selalu PKCE
- * (Spotify deprecated implicit grant 2023, hanya PKCE yang valid)
+ * Redirect URI dinamis via Linking.createURL() untuk support
+ * Expo Go development DAN production build sekaligus.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 
-export const CLIENT_ID    = 'bc23ee30bdb948b483cd1af6ba321cd1';
-export const REDIRECT_URI = 'concertid://spotify-auth';
-export const SCOPES       = [
+export const CLIENT_ID = 'bc23ee30bdb948b483cd1af6ba321cd1';
+export const SCOPES    = [
   'user-read-playback-state',
   'user-modify-playback-state',
   'user-read-currently-playing',
 ].join(' ');
 
+// Redirect URI dinamis: concertid:// di prod, exp+...// di Expo Go
+export function getRedirectUri(): string {
+  return Linking.createURL('spotify-auth');
+}
+
 const K_TOKEN    = 'sp_access_token';
 const K_REFRESH  = 'sp_refresh_token';
 const K_EXPIRY   = 'sp_token_expiry';
 const K_VERIFIER = 'sp_code_verifier';
+const K_REDIRECT = 'sp_redirect_uri';
 
 // ── Pure-JS SHA-256 ───────────────────────────────────────────────
 const K256 = [
@@ -91,45 +97,52 @@ function genVerifier(): string {
 function genChallenge(verifier: string): string { return base64url(sha256Bytes(verifier)); }
 
 // ── Auth URL (always PKCE) ────────────────────────────────────────
-export async function buildAuthUrl(): Promise<string> {
-  const verifier  = genVerifier();
-  const challenge = genChallenge(verifier);
-  await AsyncStorage.setItem(K_VERIFIER, verifier);
+export async function buildAuthUrl(): Promise<{ url: string; redirectUri: string }> {
+  const redirectUri = getRedirectUri();
+  const verifier    = genVerifier();
+  const challenge   = genChallenge(verifier);
+  await AsyncStorage.setItem(K_VERIFIER,  verifier);
+  await AsyncStorage.setItem(K_REDIRECT,  redirectUri);
 
-  // Manual string build sebagai fallback jika URLSearchParams bermasalah
+  console.log('[Spotify] Redirect URI:', redirectUri);
+
   const params = [
     `response_type=code`,
     `client_id=${encodeURIComponent(CLIENT_ID)}`,
     `scope=${encodeURIComponent(SCOPES)}`,
-    `redirect_uri=${encodeURIComponent(REDIRECT_URI)}`,
+    `redirect_uri=${encodeURIComponent(redirectUri)}`,
     `code_challenge_method=S256`,
     `code_challenge=${encodeURIComponent(challenge)}`,
   ].join('&');
 
-  return `https://accounts.spotify.com/authorize?${params}`;
+  return { url: `https://accounts.spotify.com/authorize?${params}`, redirectUri };
 }
 
 // ── Token exchange ────────────────────────────────────────────────
 export async function exchangeCode(code: string): Promise<string | null> {
-  const verifier = await AsyncStorage.getItem(K_VERIFIER);
-  if (!verifier) return null;
+  const verifier    = await AsyncStorage.getItem(K_VERIFIER);
+  const redirectUri = await AsyncStorage.getItem(K_REDIRECT);
+  if (!verifier || !redirectUri) return null;
   try {
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code', code,
-      redirect_uri: REDIRECT_URI, client_id: CLIENT_ID,
-      code_verifier: verifier,
-    });
+    const body = [
+      `grant_type=authorization_code`,
+      `code=${encodeURIComponent(code)}`,
+      `redirect_uri=${encodeURIComponent(redirectUri)}`,
+      `client_id=${encodeURIComponent(CLIENT_ID)}`,
+      `code_verifier=${encodeURIComponent(verifier)}`,
+    ].join('&');
     const res  = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
+      body,
     });
     const data = await res.json();
+    console.log('[Spotify] token exchange:', res.status, data.error || 'OK');
     if (!data.access_token) return null;
     await saveTokens(data);
-    await AsyncStorage.removeItem(K_VERIFIER);
+    await AsyncStorage.multiRemove([K_VERIFIER, K_REDIRECT]);
     return data.access_token;
-  } catch { return null; }
+  } catch (e) { console.error('[Spotify] exchangeCode error:', e); return null; }
 }
 
 async function saveTokens(data: any): Promise<void> {
@@ -211,5 +224,5 @@ export async function apiGetPlayback(token: string): Promise<SpPlayback | null> 
 }
 
 export async function clearSession(): Promise<void> {
-  await AsyncStorage.multiRemove([K_TOKEN, K_REFRESH, K_EXPIRY, K_VERIFIER]);
+  await AsyncStorage.multiRemove([K_TOKEN, K_REFRESH, K_EXPIRY, K_VERIFIER, K_REDIRECT]);
 }

@@ -66,12 +66,13 @@ export function useSpotifyPlayer() {
   const connect = useCallback(async () => {
     setS({ connecting: true, error: null });
     try {
-      const url = await buildAuthUrl();
+      const { url, redirectUri } = await buildAuthUrl();
       console.log('[Spotify] Auth URL:', url.slice(0, 80) + '...');
+      console.log('[Spotify] Redirect URI (tambahkan ke Spotify Dashboard):', redirectUri);
 
       const canOpen = await Linking.canOpenURL(url);
       if (!canOpen) {
-        setS({ connecting: false, error: 'Tidak bisa membuka browser. Pastikan ada browser terinstall.' });
+        setS({ connecting: false, error: 'Tidak bisa membuka browser.' });
         return;
       }
       await Linking.openURL(url);
