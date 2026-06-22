@@ -1111,7 +1111,6 @@ export function DetailScreen({ route, navigation }: any) {
             )}
           </View>
         )}
-      </ScrollView>
 
         {/* ─── LIVE SETLIST TAB ─── */}
         {tab === 'live' && (
