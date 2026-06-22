@@ -110,10 +110,24 @@ export function useSpotifyPlayer() {
   const playTrack = useCallback(async (spotifyId: string): Promise<boolean> => {
     const token = await ensureToken();
     if (!token) { setS({ error: 'Tidak terkoneksi ke Spotify.' }); return false; }
-    const ok = await apiPlay(token, `spotify:track:${spotifyId}`);
-    if (ok && mounted.current) { setS({ isPlaying: true, progressMs: 0, error: null }); startPoll(); }
-    else if (mounted.current) setS({ error: 'Gagal play. Pastikan app Spotify aktif di device.' });
-    return ok;
+    const result = await apiPlay(token, `spotify:track:${spotifyId}`);
+    if (result.ok && mounted.current) {
+      setS({ isPlaying: true, progressMs: 0, error: null });
+      startPoll();
+    } else if (mounted.current) {
+      const reason = result.error || '';
+      let msg = 'Gagal play di Spotify.';
+      if (reason.includes('NO_ACTIVE_DEVICE') || reason.includes('404'))
+        msg = '📱 Buka app Spotify dulu, putar lagu apa saja, lalu coba lagi.';
+      else if (reason.includes('PREMIUM') || reason.includes('403'))
+        msg = '⭐ Fitur ini butuh Spotify Premium.';
+      else if (reason.includes('401'))
+        msg = '🔑 Sesi Spotify expired. Tap "Putuskan" lalu hubungkan ulang.';
+      else if (reason)
+        msg = `Spotify error: ${reason}`;
+      setS({ error: msg });
+    }
+    return result.ok;
   }, []);
 
   const pause = useCallback(async (): Promise<boolean> => {

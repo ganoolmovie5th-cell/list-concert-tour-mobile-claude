@@ -183,13 +183,17 @@ async function apiFetch(token: string, path: string, opts: RequestInit = {}): Pr
   });
 }
 
-export async function apiPlay(token: string, spotifyUri: string): Promise<boolean> {
+export async function apiPlay(token: string, spotifyUri: string): Promise<{ ok: boolean; error?: string }> {
   try {
     const r = await apiFetch(token, '/me/player/play', {
       method: 'PUT', body: JSON.stringify({ uris: [spotifyUri] }),
     });
-    return r.status === 204 || r.status === 200 || r.status === 202;
-  } catch { return false; }
+    if (r.status === 204 || r.status === 200 || r.status === 202) return { ok: true };
+    const body = await r.json().catch(() => ({}));
+    console.log('[Spotify] apiPlay error:', r.status, JSON.stringify(body));
+    const reason = body?.error?.reason || body?.error?.message || `HTTP ${r.status}`;
+    return { ok: false, error: reason };
+  } catch (e: any) { return { ok: false, error: e?.message }; }
 }
 
 export async function apiPause(token: string): Promise<boolean> {
