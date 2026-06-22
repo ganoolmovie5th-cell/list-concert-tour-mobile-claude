@@ -1,15 +1,23 @@
 /**
- * useSpotifyPlayer — Spotify OAuth connect + playback control
- * Handles PKCE code redirect AND implicit token redirect.
- * Polls /me/player every 1s while playing to sync progressMs.
+ * useSpotifyPlayer — Spotify OAuth (expo-web-browser) + playback control
+ *
+ * Alur OAuth:
+ * 1. openAuthSessionAsync buka browser sheet
+ * 2. User login Spotify → redirect ke list-concert-tour.web.id/spotify-callback?code=xxx
+ * 3. expo-web-browser intercept URL tersebut SEBELUM halaman dimuat → return ke app
+ * 4. App extract code → exchange ke access_token
+ * Tidak perlu deep link / concertid:// scheme → works di Expo Go & production.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import {
-  buildAuthUrl, exchangeCode,
-  getValidToken, apiPlay, apiPause, apiResume,
-  apiGetPlayback, clearSession, SpPlayback,
+  buildAuthUrl, exchangeCode, getValidToken,
+  apiPlay, apiPause, apiResume, apiGetPlayback,
+  clearSession, REDIRECT_URI, SpPlayback,
 } from '../services/SpotifyService';
+
+// Diperlukan untuk iOS agar auth session ditutup dengan benar
+WebBrowser.maybeCompleteAuthSession();
 
 export interface SpotifyPlayerState {
   isConnected : boolean;
@@ -25,60 +33,69 @@ export function useSpotifyPlayer() {
     progressMs: 0, connecting: false, error: null,
   });
 
-  const tokenRef  = useRef<string | null>(null);
-  const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const mounted   = useRef(true);
+  const tokenRef = useRef<string | null>(null);
+  const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mounted  = useRef(true);
 
-  // ── Init: check existing token + listen for redirect ─────────────
+  // ── Init: cek token tersimpan ─────────────────────────────────────
   useEffect(() => {
     mounted.current = true;
-    checkToken();
-    const sub = Linking.addEventListener('url', ({ url }) => handleRedirect(url));
-    Linking.getInitialURL().then(url => { if (url) handleRedirect(url); });
+    (async () => {
+      const token = await getValidToken();
+      if (token && mounted.current) {
+        tokenRef.current = token;
+        setS({ isConnected: true });
+      }
+    })();
+    // Warmup browser Android (opsional, mempercepat buka)
+    WebBrowser.warmUpAsync().catch(() => {});
     return () => {
       mounted.current = false;
-      sub.remove();
       stopPoll();
+      WebBrowser.coolDownAsync().catch(() => {});
     };
   }, []);
 
-  const checkToken = async () => {
-    const token = await getValidToken();
-    if (token && mounted.current) {
-      tokenRef.current = token;
-      setS({ isConnected: true });
-    }
-  };
-
-  // ── Parse redirect URI (PKCE only: ?code=xxx) ────────────────────
-  const handleRedirect = useCallback(async (url: string) => {
-    if (!url.startsWith('concertid://spotify-auth')) return;
-    const code = url.split('code=')[1]?.split('&')[0];
-    if (!code) { setS({ connecting: false, error: 'Login dibatalkan.' }); return; }
-    setS({ connecting: true, error: null });
-    const token = await exchangeCode(code);
-    if (!mounted.current) return;
-    if (token) { tokenRef.current = token; setS({ isConnected: true, connecting: false, error: null }); }
-    else setS({ connecting: false, error: 'Token exchange gagal. Coba lagi.' });
-  }, []);
-
-  // ── Auth ──────────────────────────────────────────────────────────
+  // ── Connect: buka browser sheet, intercept redirect ───────────────
   const connect = useCallback(async () => {
     setS({ connecting: true, error: null });
     try {
-      const { url, redirectUri } = await buildAuthUrl();
-      console.log('[Spotify] Auth URL:', url.slice(0, 80) + '...');
-      console.log('[Spotify] Redirect URI (tambahkan ke Spotify Dashboard):', redirectUri);
+      const { url } = await buildAuthUrl();
+      console.log('[Spotify] Opening auth session...');
 
-      const canOpen = await Linking.canOpenURL(url);
-      if (!canOpen) {
-        setS({ connecting: false, error: 'Tidak bisa membuka browser.' });
+      const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URI);
+      console.log('[Spotify] Auth result type:', result.type);
+
+      if (result.type !== 'success') {
+        setS({ connecting: false, error: result.type === 'cancel' ? 'Login dibatalkan.' : 'Gagal login Spotify.' });
         return;
       }
-      await Linking.openURL(url);
+
+      // Extract code dari redirect URL
+      // result.url = https://list-concert-tour.web.id/spotify-callback?code=xxx
+      const raw  = (result as any).url as string;
+      const code = raw.split('code=')[1]?.split('&')[0];
+
+      if (!code) {
+        setS({ connecting: false, error: 'Tidak ada code dari Spotify. Coba lagi.' });
+        return;
+      }
+
+      console.log('[Spotify] Got code, exchanging...');
+      const token = await exchangeCode(decodeURIComponent(code));
+
+      if (!mounted.current) return;
+
+      if (token) {
+        tokenRef.current = token;
+        setS({ isConnected: true, connecting: false, error: null });
+        console.log('[Spotify] ✅ Connected!');
+      } else {
+        setS({ connecting: false, error: 'Token exchange gagal. Coba lagi.' });
+      }
     } catch (e: any) {
       console.error('[Spotify] connect error:', e);
-      setS({ connecting: false, error: `Gagal membuka browser: ${e?.message || 'Unknown error'}` });
+      setS({ connecting: false, error: `Error: ${e?.message || 'Unknown'}` });
     }
   }, []);
 
@@ -95,7 +112,7 @@ export function useSpotifyPlayer() {
     if (!token) { setS({ error: 'Tidak terkoneksi ke Spotify.' }); return false; }
     const ok = await apiPlay(token, `spotify:track:${spotifyId}`);
     if (ok && mounted.current) { setS({ isPlaying: true, progressMs: 0, error: null }); startPoll(); }
-    else if (mounted.current) setS({ error: 'Gagal play. Pastikan Spotify aktif di device.' });
+    else if (mounted.current) setS({ error: 'Gagal play. Pastikan app Spotify aktif di device.' });
     return ok;
   }, []);
 
