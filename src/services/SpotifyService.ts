@@ -82,9 +82,11 @@ function base64url(bytes: number[]): string {
 // ── PKCE ─────────────────────────────────────────────────────────
 function genVerifier(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-  const arr   = new Uint8Array(64);
-  crypto.getRandomValues(arr);
-  return Array.from(arr).map(b => chars[b % chars.length]).join('');
+  let result = '';
+  for (let i = 0; i < 64; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
 }
 function genChallenge(verifier: string): string { return base64url(sha256Bytes(verifier)); }
 
