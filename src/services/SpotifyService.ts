@@ -6,7 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const CLIENT_ID    = 'bc23ee30bdb948b483cd1af6ba321cd1';
-export const REDIRECT_URI = 'https://www.list-concert-tour.web.id/spotify-callback';
+export const REDIRECT_URI = 'concertid://spotify-auth';
 export const SCOPES       = [
   'user-read-playback-state',
   'user-modify-playback-state',
@@ -14,9 +14,7 @@ export const SCOPES       = [
 ].join(' ');
 
 // Tidak perlu lagi Linking.createURL — URI sudah static
-export function getRedirectUri(): string { return REDIRECT_URI; }
-
-const K_TOKEN    = 'sp_access_token';
+export function getRedirectUri(): string { return REDIRECT_URI; }const K_TOKEN    = 'sp_access_token';
 const K_REFRESH  = 'sp_refresh_token';
 const K_EXPIRY   = 'sp_token_expiry';
 const K_VERIFIER = 'sp_code_verifier';
