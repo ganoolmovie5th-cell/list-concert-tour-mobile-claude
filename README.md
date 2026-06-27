@@ -161,6 +161,7 @@ src/
 | Item | Status |
 |---|---|
 | Data konser **44 entries** | ✅ Sync |
+| Guns N' Roses → **confirmed** (21 Nov 2026, Stadion Madya GBK) | ✅ Sync |
 | `ARTIST_IMAGES` URL dari web | ✅ Sync |
 | `ARTIST_SOCIALS` handles | ✅ Sync |
 | `SETLISTS` + `SPOTIFY_ARTISTS` | ✅ Sync |

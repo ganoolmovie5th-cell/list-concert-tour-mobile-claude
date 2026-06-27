@@ -5,7 +5,7 @@
  * Semua data HARUS selalu mengikuti app.js web.
  * Image diambil langsung dari web: https://www.list-concert-tour.web.id/images/[id].jpeg
  *
- * Last synced: 19 Juni 2026
+ * Last synced: 28 Juni 2026
  */
 
 import { Concert } from '../types';
@@ -46,7 +46,7 @@ export const ARTIST_IMAGES: Record<string, string> = {
   'babymonster-jakarta-2026':       `${WEB_BASE}/images/babymonster-jakarta-2026.jpeg?v=2`,
   'nancy-ajram-jakarta-2027':       `${WEB_BASE}/images/nancy-ajram-jakarta-2027.jpeg?v=2`,
   'metallica-jakarta-rumor':        `${WEB_BASE}/images/metallica-jakarta-rumor.jpeg?v=2`,
-  'gnr-jakarta-rumor':              `${WEB_BASE}/images/gnr-jakarta-rumor.jpeg?v=2`,
+  'guns-n-roses-jakarta-2026':      `${WEB_BASE}/images/gnr-jakarta-rumor.jpeg?v=2`,
   'ariana-grande-jakarta-rumor':    `${WEB_BASE}/images/ariana-grande-jakarta-rumor.jpeg?v=2`,
   'olivia-rodrigo-jakarta-rumor':   `${WEB_BASE}/images/olivia-rodrigo-jakarta-rumor.jpeg?v=2`,
   'charlie-puth-jakarta-rumor':     `${WEB_BASE}/images/charlie-puth-jakarta-rumor.jpeg?v=2`,
@@ -1092,25 +1092,24 @@ export const CONCERTS: Concert[] = [
   },
 
   {
-    id: 'gnr-jakarta-rumor',
+    id: 'guns-n-roses-jakarta-2026',
     artist: "Guns N' Roses",
-    tour: 'TBA',
-    genre: 'rock', emoji: '🌹',
-    dates: ['TBA'],
-    rawDate: new Date('2027-07-01'),
-    time: 'TBA',
-    venue: 'TBA',
-    city: 'Jakarta',
-    promotor: 'TBA',
-    ticketPlatform: 'TBA',
-    ticketUrl: 'https://gunsnroses.com',
-    priceRange: 'Belum diumumkan',
+    tour: 'World Tour 2026',
+    genre: 'rock', emoji: '🎸',
+    dates: ['21 November 2026'],
+    rawDate: new Date('2026-11-21'),
+    time: '19:00 WIB',
+    venue: 'Stadion Madya GBK',
+    city: 'Senayan, Jakarta Pusat',
+    promotor: 'Rajawali Indonesia',
+    ticketPlatform: 'gnrjakarta.com',
+    ticketUrl: 'https://gnrjakarta.com',
+    priceRange: 'Segera diumumkan',
     priceMin: 0, priceMax: 0,
-    ticketCategories: [{ name: 'Semua kategori', price: 'TBA' }],
-    confirmStatus: 'rumor', hot: true,
-    rumorDetail: "Rumor Guns N' Roses ke Jakarta beredar di komunitas rock Indonesia. Belum ada konfirmasi resmi dari manajemen atau promotor lokal.",
-    description: "Guns N' Roses dirumorkan akan menggelar konser di Indonesia. Belum ada tanggal atau venue resmi.",
-    sources: ['kapanlagi.com'],
+    ticketCategories: [{ name: 'Various Categories', price: 'Segera diumumkan' }],
+    confirmStatus: 'confirmed', hot: true,
+    description: "Guns N' Roses kembali ke Jakarta dalam rangkaian World Tour 2026. Axl Rose, Slash, dan Duff McKagan tampil di Stadion Madya GBK membawakan hits legendaris seperti Welcome to the Jungle, Sweet Child O' Mine, dan November Rain.",
+    sources: ['gnrjakarta.com'],
   },
 
   {
@@ -1202,7 +1201,7 @@ export const ARTIST_SOCIALS: Record<string, { instagram?: string; twitter?: stri
   'babymonster-jakarta-2026':       { instagram: 'https://instagram.com/babymonster_official', twitter: 'https://twitter.com/BABYMONSTER_' },
   'nancy-ajram-jakarta-2027':       { instagram: 'https://instagram.com/nancyajram', twitter: 'https://twitter.com/NancyAjram' },
   'metallica-jakarta-rumor':        { instagram: 'https://instagram.com/metallica', twitter: 'https://twitter.com/Metallica' },
-  'gnr-jakarta-rumor':              { instagram: 'https://instagram.com/gunsnroses', twitter: 'https://twitter.com/gunsnroses' },
+  'guns-n-roses-jakarta-2026':      { instagram: 'https://instagram.com/gunsnroses', twitter: 'https://twitter.com/gunsnroses' },
 };
 
 export const SETLISTS: Record<string, { song: string; prediction?: boolean }[]> = {
@@ -1306,5 +1305,5 @@ export const SPOTIFY_ARTISTS: Record<string, string> = {
   'babymonster-jakarta-2026':        '3kN4V6lLsOy2rFuPFiITfl',
   'nancy-ajram-jakarta-2027':        '0zTHiLLhSKPPByLxZz6pJD',
   'metallica-jakarta-rumor':         '2ye2Wgw4gimLv2eAKyk1NB',
-  'gnr-jakarta-rumor':               '3qm84nBOXUEQ2vnTfUTTFC',
+  'guns-n-roses-jakarta-2026':       '3qm84nBOXUEQ2vnTfUTTFC',
 };

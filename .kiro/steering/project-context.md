@@ -101,6 +101,12 @@ Paket yang ditambahkan (perlu `npm install`):
 
 ---
 
+## Sync dari Web (Juni 2026)
+
+| Sync | File | Catatan |
+|---|---|---|
+| Guns N' Roses confirmed | `src/data/concerts.ts` | Entry GNR rumor (`gnr-jakarta-rumor`) diganti jadi confirmed (`guns-n-roses-jakarta-2026`): 21 Nov 2026, Stadion Madya GBK, Rajawali Indonesia. Key di ARTIST_IMAGES/SOCIALS/SPOTIFY_ARTISTS ikut di-rename. Total tetap 44 konser. Mengikuti `app.js` web |
+
 ## Fitur Baru (Juni 2026)
 
 | Fitur | File | Catatan |
