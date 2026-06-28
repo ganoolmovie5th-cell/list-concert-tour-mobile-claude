@@ -236,14 +236,13 @@ export function KaraokeScreen({ route, navigation }: Props) {
           <View style={styles.spConnectedRow}>
             <Ionicons name="checkmark-circle" size={14} color="#1DB954" />
             <Text style={[styles.spConnectedText, { color: '#1DB954' }]}>Spotify terhubung</Text>
-            {spotify.error
-              ? <Text style={[styles.spError, { color: '#ef4444' }]} numberOfLines={1}>⚠ {spotify.error}</Text>
-              : <View style={{ flex: 1 }} />
-            }
             <TouchableOpacity onPress={spotify.disconnect} style={styles.spDisconnect}>
               <Text style={{ color: '#1DB95488', fontSize: 11 }}>Putuskan</Text>
             </TouchableOpacity>
           </View>
+          {spotify.error && (
+            <Text style={[styles.spError, { color: '#ef4444' }]}>⚠ {spotify.error}</Text>
+          )}
         </View>
       )}
 
@@ -380,7 +379,7 @@ export function KaraokeScreen({ route, navigation }: Props) {
         {/* Play / Pause */}
         <TouchableOpacity onPress={togglePlay}
           style={[styles.playBtn, { backgroundColor: isPlaying ? colors.accent : colors.accent + 'dd' }]}>
-          <Ionicons name={isPlaying ? 'pause' : 'play'} size={22} color="#fff" />
+          <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color="#fff" />
         </TouchableOpacity>
 
         {/* Next song */}
@@ -431,16 +430,16 @@ const styles = StyleSheet.create({
   setlistTitle:    { fontSize: 15, fontWeight: '600', marginBottom: 2 },
   setlistType:     { fontSize: 11 },
   noData:          { fontSize: 14, marginTop: 20 },
-  controls:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, paddingVertical: 10, borderTopWidth: 1 },
-  controlBtn:      { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: 'transparent' },
-  playBtn:         { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowColor: '#a855f7', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6 },
+  controls:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingTop: 8, paddingHorizontal: 24, borderTopWidth: 1 },
+  controlBtn:      { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
+  playBtn:         { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', shadowColor: '#a855f7', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6 },
   // Spotify
   spConnectBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 8, marginBottom: 2, padding: 12, borderRadius: 14, borderWidth: 1 },
   spConnectTitle:  { fontSize: 13, fontWeight: '700' },
   spConnectSub:    { fontSize: 11, marginTop: 1 },
   spConnectedBar:  { marginHorizontal: 16, marginTop: 8, marginBottom: 2, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
   spConnectedRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  spConnectedText: { fontSize: 12, fontWeight: '600', color: '#1DB954' },
-  spError:         { flex: 1, fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  spConnectedText: { fontSize: 12, fontWeight: '600', flex: 1, color: '#1DB954' },
+  spError:         { fontSize: 11, fontWeight: '600', marginTop: 4 },
   spDisconnect:    { paddingHorizontal: 8, paddingVertical: 4 },
 });
