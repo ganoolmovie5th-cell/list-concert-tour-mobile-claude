@@ -125,25 +125,37 @@ export function KaraokeScreen({ route, navigation }: Props) {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [spotify]);
 
-  // Tap baris — loncat ke baris & mulai
-  const tapLine = useCallback((idx: number) => {
+  // Tap baris — loncat ke baris & mulai (cek premium jika Spotify terhubung)
+  const tapLine = useCallback(async (idx: number) => {
+    setShowHint(false);
+    if (spotify.isConnected) {
+      if (currentSong?.spotifyId) {
+        const ok = await spotify.playTrack(currentSong.spotifyId);
+        if (!ok) return;
+      } else if (spotify.progressMs > 0) {
+        const ok = await spotify.resume();
+        if (!ok) return;
+      }
+    }
     setLineIdx(idx);
     setIsPlaying(true);
-    setShowHint(false);
     scrollToLine(idx);
-  }, [scrollToLine]);
+  }, [scrollToLine, spotify, currentSong]);
 
   // Toggle play/pause — with Spotify if connected
   const togglePlay = useCallback(async () => {
     setShowHint(false);
     if (!isPlaying) {
-      // START
-      if (spotify.isConnected && currentSong?.spotifyId) {
-        // Cek Premium dulu — playTrack return false jika gagal/non-premium
-        const ok = await spotify.playTrack(currentSong.spotifyId);
-        if (!ok) return; // error sudah di-set di hook, jangan start timer
-      } else if (spotify.isConnected && spotify.progressMs > 0) {
-        await spotify.resume();
+      // START — cek premium dulu jika Spotify terhubung
+      if (spotify.isConnected) {
+        if (currentSong?.spotifyId) {
+          const ok = await spotify.playTrack(currentSong.spotifyId);
+          if (!ok) return; // non-premium atau error — error sudah di-set di hook
+        } else if (spotify.progressMs > 0) {
+          const ok = await spotify.resume();
+          if (!ok) return;
+        }
+        // Jika tidak ada spotifyId dan tidak ada progress → karaoke timer only, lanjut
       }
       if (lineIdx < 0) setLineIdx(0);
       setIsPlaying(true);
@@ -207,12 +219,16 @@ export function KaraokeScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       ) : (
         <View style={[styles.spConnectedBar, { backgroundColor: '#1DB95412', borderColor: '#1DB95433' }]}>
-          <Ionicons name="checkmark-circle" size={14} color="#1DB954" />
-          <Text style={[styles.spConnectedText, { color: '#1DB954' }]}>Spotify terhubung</Text>
-          {spotify.error && <Text style={[styles.spError, { color: '#ef4444' }]}>⚠ {spotify.error}</Text>}
-          <TouchableOpacity onPress={spotify.disconnect} style={styles.spDisconnect}>
-            <Text style={{ color: '#1DB95488', fontSize: 11 }}>Putuskan</Text>
-          </TouchableOpacity>
+          <View style={styles.spConnectedRow}>
+            <Ionicons name="checkmark-circle" size={14} color="#1DB954" />
+            <Text style={[styles.spConnectedText, { color: '#1DB954' }]}>Spotify terhubung</Text>
+            <TouchableOpacity onPress={spotify.disconnect} style={styles.spDisconnect}>
+              <Text style={{ color: '#1DB95488', fontSize: 11 }}>Putuskan</Text>
+            </TouchableOpacity>
+          </View>
+          {spotify.error && (
+            <Text style={[styles.spError, { color: '#ef4444' }]}>⚠ {spotify.error}</Text>
+          )}
         </View>
       )}
 
@@ -335,19 +351,6 @@ export function KaraokeScreen({ route, navigation }: Props) {
       </ScrollView>
 
 
-      {/* ── Premium notice ── */}
-      {spotify.isConnected && spotify.error?.includes('Premium') && (
-        <View style={[styles.premiumBanner, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b44' }]}>
-          <Text style={styles.premiumIcon}>⭐</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.premiumTitle, { color: '#f59e0b' }]}>Spotify Premium diperlukan</Text>
-            <Text style={[styles.premiumSub, { color: '#f59e0b99' }]}>
-              Playback audio hanya tersedia untuk akun Spotify Premium.{'\n'}Karaoke mode tetap bisa dipakai tanpa audio.
-            </Text>
-          </View>
-        </View>
-      )}
-
       {/* ── Controls ── */}
       <View style={[styles.controls, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         {/* Prev song */}
@@ -420,12 +423,9 @@ const styles = StyleSheet.create({
   spConnectBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 8, marginBottom: 2, padding: 12, borderRadius: 14, borderWidth: 1 },
   spConnectTitle:  { fontSize: 13, fontWeight: '700' },
   spConnectSub:    { fontSize: 11, marginTop: 1 },
-  spConnectedBar:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 16, marginTop: 8, marginBottom: 2, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
-  spConnectedText: { fontSize: 12, fontWeight: '600', flex: 1 },
-  spError:         { fontSize: 11, flex: 1 },
+  spConnectedBar:  { marginHorizontal: 16, marginTop: 8, marginBottom: 2, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  spConnectedRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  spConnectedText: { fontSize: 12, fontWeight: '600', flex: 1, color: '#1DB954' },
+  spError:         { fontSize: 12, fontWeight: '600', marginTop: 4 },
   spDisconnect:    { paddingHorizontal: 8, paddingVertical: 4 },
-  premiumBanner:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginHorizontal: 16, marginBottom: 6, padding: 12, borderRadius: 12, borderWidth: 1 },
-  premiumIcon:     { fontSize: 18, marginTop: 1 },
-  premiumTitle:    { fontSize: 13, fontWeight: '800', marginBottom: 2 },
-  premiumSub:      { fontSize: 11, lineHeight: 16 },
 });

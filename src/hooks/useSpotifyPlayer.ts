@@ -153,6 +153,10 @@ export function useSpotifyPlayer() {
   const resume = useCallback(async (): Promise<boolean> => {
     const token = await ensureToken();
     if (!token) return false;
+    if (!isPremium.current) {
+      setS({ error: '⭐ Fitur ini butuh Spotify Premium.' });
+      return false;
+    }
     const ok = await apiResume(token);
     if (ok && mounted.current) { setS({ isPlaying: true }); startPoll(); }
     return ok;
