@@ -13,8 +13,8 @@ import { useSocialFeatures } from '../hooks/useSocialFeatures';
 import { useDiscussion } from '../hooks/useDiscussion';
 import { useReviews } from '../hooks/useReviews';
 import { useBeenThere } from '../hooks/useBeenThere';
-import { useTicketMarket, buildWaHref, formatRpDisplay } from '../hooks/useTicketMarket';
-import { useGroupBuying, buildWaHrefGB } from '../hooks/useGroupBuying';
+import { useTicketMarket, formatRpDisplay } from '../hooks/useTicketMarket';
+import { useGroupBuying } from '../hooks/useGroupBuying';
 import { useFanPhotos } from '../hooks/useFanPhotos';
 import { useConcertCheckin } from '../hooks/useConcertCheckin';
 import { useInAppChat } from '../hooks/useInAppChat';
@@ -26,7 +26,7 @@ import { StoryCard } from '../components/StoryCard';
 import { CONCERTS, SETLISTS, ARTIST_SOCIALS, SPOTIFY_ARTISTS } from '../data/concerts';
 import { getSeatMap } from '../data/seatMaps';
 import { LYRICS } from '../data/lyrics';
-import { getGoogleCalendarUrl, isPast, timeAgo } from '../utils/helpers';
+import { getGoogleCalendarUrl, isPast, timeAgo, buildWaHref } from '../utils/helpers';
 import { useVoteCountsCtx } from '../context/VoteCountsContext';
 
 const { width } = Dimensions.get('window');
@@ -692,7 +692,7 @@ export function DetailScreen({ route, navigation }: any) {
                 <Text style={[styles.emptyInline, { color: colors.textSubtle }]}>{t('belumAdaCariTeman')}</Text>
               ) : (
                 posts.map(p => {
-                  const waHref = buildWaHrefGB(p.contact);
+                  const waHref = buildWaHref(p.contact);
                   const igHref = p.ig ? `https://instagram.com/${p.ig}` : null;
                   const isOwner = p.ownerUid === gbOwnerUid;
 

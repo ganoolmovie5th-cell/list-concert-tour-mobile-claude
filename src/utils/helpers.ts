@@ -3,6 +3,14 @@ export const TODAY = new Date();
 export const isPast = (c: Concert) => c.rawDate < TODAY;
 export const isUpcoming = (c: Concert) => c.rawDate >= TODAY;
 export const fmtCount = (n: number) => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'k' : String(n);
+export function buildWaHref(contact: string): string | null {
+  const digits = contact.replace(/\D/g, '');
+  if (!digits || digits.length < 8) return null;
+  let num = digits;
+  if (num.startsWith('0')) num = '62' + num.slice(1);
+  else if (!num.startsWith('62')) num = '62' + num;
+  return `https://wa.me/${num}`;
+}
 export const timeAgo = (date: string) => {
   const diff = Date.now() - new Date(date).getTime();
   const m = Math.floor(diff/60000), h = Math.floor(m/60), d = Math.floor(h/24);

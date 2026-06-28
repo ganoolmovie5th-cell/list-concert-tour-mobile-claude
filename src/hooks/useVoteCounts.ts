@@ -13,7 +13,6 @@ export interface VoteCounts {
 export function useVoteCounts() {
   const [counts, setCounts]     = useState<VoteCounts>({});
   const [loading, setLoading]   = useState(true);
-  const [lastFetch, setLastFetch] = useState(0);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -25,7 +24,6 @@ export function useVoteCounts() {
         if (r.type === 'interested') agg[r.concert_id].interested++;
       }
       setCounts(agg);
-      setLastFetch(Date.now());
     } catch {
       // silently fail — counts stay empty / from cache
     } finally {
@@ -46,5 +44,5 @@ export function useVoteCounts() {
     [counts],
   );
 
-  return { counts, loading, lastFetch, fetchAll, getCount };
+  return { counts, loading, fetchAll, getCount };
 }

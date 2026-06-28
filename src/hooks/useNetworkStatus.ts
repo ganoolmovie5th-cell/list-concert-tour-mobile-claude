@@ -3,6 +3,7 @@
  * Menggunakan fetch probe ke Supabase endpoint (ringan, no extra package)
  */
 import { useState, useEffect, useCallback } from 'react';
+import { SUPA_URL, SUPA_KEY } from '../lib/supabase';
 
 export function useNetworkStatus() {
   const [isOnline, setIsOnline] = useState(true);
@@ -11,10 +12,10 @@ export function useNetworkStatus() {
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 5000);
-      await fetch('https://crtqxgsruywurdlcsjfp.supabase.co/rest/v1/', {
+      await fetch(`${SUPA_URL}/rest/v1/`, {
         method: 'HEAD',
         signal: ctrl.signal,
-        headers: { apikey: 'sb_publishable_G9oVhoD74guR61dZ755SYw_QwcrRKmc' },
+        headers: { apikey: SUPA_KEY },
       });
       clearTimeout(timer);
       setIsOnline(true);

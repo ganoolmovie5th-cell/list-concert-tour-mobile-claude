@@ -26,15 +26,6 @@ export interface TicketListing {
   sold: boolean;
 }
 
-export function buildWaHref(contact: string): string | null {
-  const digits = contact.replace(/\D/g, '');
-  if (!digits || digits.length < 8) return null;
-  let num = digits;
-  if (num.startsWith('0')) num = '62' + num.slice(1);
-  else if (!num.startsWith('62')) num = '62' + num;
-  return `https://wa.me/${num}`;
-}
-
 export function formatRpDisplay(price: string): string {
   if (!price) return '';
   const num = parseInt(price.replace(/\D/g, ''));

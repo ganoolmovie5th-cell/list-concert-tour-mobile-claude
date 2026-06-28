@@ -214,3 +214,17 @@ type:    r.type    || 'jual',   // TicketMarket only
 - Jangan edit `concerts.ts` manual — sync dari `app.js` web
 - Jangan pakai `cid_going_v2` dll — harus `cid_going`
 - Jangan import `VoteCountsProvider` di screen — hanya di `App.tsx`
+
+---
+
+## Pembersihan Kode / Ponytail Audit (Juni 2026)
+
+Hapus over-engineering tanpa mengubah perilaku:
+
+| Item | File | Catatan |
+|---|---|---|
+| Hapus hook yatim | `src/hooks/useWishlist.ts` (dihapus) | Semua layar pakai `useWishlist` dari `context/WishlistContext.tsx` (yang punya schedule/cancel reminder). Hook standalone tanpa reminder = jebakan. Jangan buat lagi |
+| Lepas reanimated | `package.json`, `babel.config.js` | 0 import di src; plugin manual di babel berisiko jalan dobel (sama seperti catatan block-blast). Animasi pakai `Animated` bawaan RN |
+| Dedup WhatsApp href | `src/utils/helpers.ts`, `useTicketMarket.ts`, `useGroupBuying.ts`, `DetailScreen.tsx` | `buildWaHref` & `buildWaHrefGB` identik → satu fungsi di helpers |
+| Hilangkan hardcode key | `src/hooks/useNetworkStatus.ts` | Pakai `SUPA_URL`/`SUPA_KEY` dari `lib/supabase` |
+| Buang state mati | `src/hooks/useVoteCounts.ts` | `lastFetch` tak pernah dikonsumsi |

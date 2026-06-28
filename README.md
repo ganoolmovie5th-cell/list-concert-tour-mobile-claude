@@ -223,4 +223,14 @@ Data konser di mobile **selalu mengikuti web**. Jika ada perubahan di `app.js` w
 
 ---
 
+## Pembersihan kode (Juni 2026)
+
+Audit over-engineering (ponytail) — hapus kode berlebihan tanpa mengubah perilaku:
+- Hapus `src/hooks/useWishlist.ts` yatim (semua layar pakai `useWishlist` dari `WishlistContext`).
+- Lepas `react-native-reanimated` (0 import) + baris plugin di `babel.config.js`.
+- Dedup `buildWaHref`/`buildWaHrefGB` → satu fungsi di `src/utils/helpers.ts`.
+- `useNetworkStatus` pakai `SUPA_URL`/`SUPA_KEY` dari `lib/supabase` (hapus hardcode); buang `lastFetch` tak terpakai di `useVoteCounts`.
+
+---
+
 © 2026 ConcertID. Dibuat dengan ❤️ untuk komunitas fans musik Indonesia.
