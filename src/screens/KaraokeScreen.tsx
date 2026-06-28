@@ -138,13 +138,15 @@ export function KaraokeScreen({ route, navigation }: Props) {
     setShowHint(false);
     if (!isPlaying) {
       // START
-      if (lineIdx < 0) setLineIdx(0);
-      setIsPlaying(true);
       if (spotify.isConnected && currentSong?.spotifyId) {
-        await spotify.playTrack(currentSong.spotifyId);
+        // Cek Premium dulu — playTrack return false jika gagal/non-premium
+        const ok = await spotify.playTrack(currentSong.spotifyId);
+        if (!ok) return; // error sudah di-set di hook, jangan start timer
       } else if (spotify.isConnected && spotify.progressMs > 0) {
         await spotify.resume();
       }
+      if (lineIdx < 0) setLineIdx(0);
+      setIsPlaying(true);
     } else {
       // PAUSE
       setIsPlaying(false);
@@ -333,6 +335,19 @@ export function KaraokeScreen({ route, navigation }: Props) {
       </ScrollView>
 
 
+      {/* ── Premium notice ── */}
+      {spotify.isConnected && spotify.error?.includes('Premium') && (
+        <View style={[styles.premiumBanner, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b44' }]}>
+          <Text style={styles.premiumIcon}>⭐</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.premiumTitle, { color: '#f59e0b' }]}>Spotify Premium diperlukan</Text>
+            <Text style={[styles.premiumSub, { color: '#f59e0b99' }]}>
+              Playback audio hanya tersedia untuk akun Spotify Premium.{'\n'}Karaoke mode tetap bisa dipakai tanpa audio.
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* ── Controls ── */}
       <View style={[styles.controls, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         {/* Prev song */}
@@ -409,4 +424,8 @@ const styles = StyleSheet.create({
   spConnectedText: { fontSize: 12, fontWeight: '600', flex: 1 },
   spError:         { fontSize: 11, flex: 1 },
   spDisconnect:    { paddingHorizontal: 8, paddingVertical: 4 },
+  premiumBanner:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginHorizontal: 16, marginBottom: 6, padding: 12, borderRadius: 12, borderWidth: 1 },
+  premiumIcon:     { fontSize: 18, marginTop: 1 },
+  premiumTitle:    { fontSize: 13, fontWeight: '800', marginBottom: 2 },
+  premiumSub:      { fontSize: 11, lineHeight: 16 },
 });
