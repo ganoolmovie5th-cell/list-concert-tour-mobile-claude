@@ -372,14 +372,14 @@ export function KaraokeScreen({ route, navigation }: Props) {
           <TouchableOpacity onPress={() => goToSong(Math.max(0, songIdx - 1))}
             disabled={songIdx === 0}
             style={[styles.controlBtn, { opacity: songIdx === 0 ? 0.3 : 1 }]}>
-            <Ionicons name="play-skip-back" size={22} color={colors.text} />
+            <Ionicons name="play-skip-back" size={18} color={colors.text} />
           </TouchableOpacity>
         ) : <View style={styles.controlBtn} />}
 
         {/* Play / Pause */}
         <TouchableOpacity onPress={togglePlay}
           style={[styles.playBtn, { backgroundColor: isPlaying ? colors.accent : colors.accent + 'dd' }]}>
-          <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
+          <Ionicons name={isPlaying ? 'pause' : 'play'} size={22} color="#fff" />
         </TouchableOpacity>
 
         {/* Next song */}
@@ -387,7 +387,7 @@ export function KaraokeScreen({ route, navigation }: Props) {
           <TouchableOpacity onPress={() => goToSong(Math.min(songs.length - 1, songIdx + 1))}
             disabled={songIdx === songs.length - 1}
             style={[styles.controlBtn, { opacity: songIdx === songs.length - 1 ? 0.3 : 1 }]}>
-            <Ionicons name="play-skip-forward" size={22} color={colors.text} />
+            <Ionicons name="play-skip-forward" size={18} color={colors.text} />
           </TouchableOpacity>
         ) : <View style={styles.controlBtn} />}
       </View>
@@ -430,9 +430,9 @@ const styles = StyleSheet.create({
   setlistTitle:    { fontSize: 15, fontWeight: '600', marginBottom: 2 },
   setlistType:     { fontSize: 11 },
   noData:          { fontSize: 14, marginTop: 20 },
-  controls:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, paddingVertical: 14, borderTopWidth: 1 },
-  controlBtn:      { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  playBtn:         { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', shadowColor: '#a855f7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 },
+  controls:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, paddingVertical: 10, borderTopWidth: 1 },
+  controlBtn:      { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: 'transparent' },
+  playBtn:         { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', shadowColor: '#a855f7', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6 },
   // Spotify
   spConnectBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 8, marginBottom: 2, padding: 12, borderRadius: 14, borderWidth: 1 },
   spConnectTitle:  { fontSize: 13, fontWeight: '700' },
