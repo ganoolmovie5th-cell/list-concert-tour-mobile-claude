@@ -21,6 +21,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export interface SpotifyPlayerState {
   isConnected : boolean;
+  isPremium   : boolean;
   isPlaying   : boolean;
   progressMs  : number;
   connecting  : boolean;
@@ -29,7 +30,7 @@ export interface SpotifyPlayerState {
 
 export function useSpotifyPlayer() {
   const [state, setState] = useState<SpotifyPlayerState>({
-    isConnected: false, isPlaying: false,
+    isConnected: false, isPremium: false, isPlaying: false,
     progressMs: 0, connecting: false, error: null,
   });
 
@@ -93,7 +94,7 @@ export function useSpotifyPlayer() {
         const me = await apiGetMe(token);
         isPremium.current = me?.product === 'premium';
         console.log('[Spotify] product:', me?.product);
-        setS({ isConnected: true, connecting: false, error: null });
+        setS({ isConnected: true, isPremium: isPremium.current, connecting: false, error: null });
         console.log('[Spotify] ✅ Connected!');
       } else {
         setS({ connecting: false, error: 'Token exchange gagal. Coba lagi.' });
@@ -107,8 +108,9 @@ export function useSpotifyPlayer() {
   const disconnect = useCallback(async () => {
     await clearSession();
     tokenRef.current = null;
+    isPremium.current = false;
     stopPoll();
-    setState({ isConnected: false, isPlaying: false, progressMs: 0, connecting: false, error: null });
+    setState({ isConnected: false, isPremium: false, isPlaying: false, progressMs: 0, connecting: false, error: null });
   }, []);
 
   // ── Playback ──────────────────────────────────────────────────────
@@ -187,5 +189,7 @@ export function useSpotifyPlayer() {
     if (mounted.current) setState(s => ({ ...s, ...partial }));
   };
 
-  return { ...state, connect, disconnect, playTrack, pause, resume };
+  const setError = (msg: string) => setS({ error: msg });
+
+  return { ...state, connect, disconnect, playTrack, pause, resume, setError };
 }

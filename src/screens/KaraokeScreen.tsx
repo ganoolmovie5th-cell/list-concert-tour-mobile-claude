@@ -128,6 +128,10 @@ export function KaraokeScreen({ route, navigation }: Props) {
   // Tap baris — loncat ke baris & mulai (cek premium jika Spotify terhubung)
   const tapLine = useCallback(async (idx: number) => {
     setShowHint(false);
+    if (spotify.isConnected && !spotify.isPremium) {
+      spotify.setError('⭐ Fitur ini butuh Spotify Premium.');
+      return;
+    }
     if (spotify.isConnected) {
       if (currentSong?.spotifyId) {
         const ok = await spotify.playTrack(currentSong.spotifyId);
@@ -146,16 +150,21 @@ export function KaraokeScreen({ route, navigation }: Props) {
   const togglePlay = useCallback(async () => {
     setShowHint(false);
     if (!isPlaying) {
-      // START — cek premium dulu jika Spotify terhubung
+      // Guard premium — cek dulu sebelum apapun
+      if (spotify.isConnected && !spotify.isPremium) {
+        spotify.setError('⭐ Fitur ini butuh Spotify Premium.');
+        return;
+      }
+      // START
       if (spotify.isConnected) {
         if (currentSong?.spotifyId) {
           const ok = await spotify.playTrack(currentSong.spotifyId);
-          if (!ok) return; // non-premium atau error — error sudah di-set di hook
+          if (!ok) return;
         } else if (spotify.progressMs > 0) {
           const ok = await spotify.resume();
           if (!ok) return;
         }
-        // Jika tidak ada spotifyId dan tidak ada progress → karaoke timer only, lanjut
+        // Tidak ada spotifyId dan tidak ada progress → timer only, lanjut
       }
       if (lineIdx < 0) setLineIdx(0);
       setIsPlaying(true);
