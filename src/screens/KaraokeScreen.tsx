@@ -10,7 +10,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Animated, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { LYRICS, SongLyrics } from '../data/lyrics';
@@ -28,6 +28,7 @@ const TITLE_H = 160;
 export function KaraokeScreen({ route, navigation }: Props) {
   const { concertId, concertArtist } = route.params;
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const songs: SongLyrics[] = LYRICS[concertId] || [];
   const setlistData          = SETLISTS[concertId] || [];
@@ -186,7 +187,7 @@ export function KaraokeScreen({ route, navigation }: Props) {
   const bg = isDark ? '#0f0a1a' : '#f8f5ff';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: bg }]} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor="#0f0a1a" />
 
       {/* ── Header ── */}
@@ -365,7 +366,7 @@ export function KaraokeScreen({ route, navigation }: Props) {
 
 
       {/* ── Controls ── */}
-      <View style={[styles.controls, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+      <View style={[styles.controls, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: insets.bottom || 14 }]}>
         {/* Prev song */}
         {hasLyrics ? (
           <TouchableOpacity onPress={() => goToSong(Math.max(0, songIdx - 1))}
