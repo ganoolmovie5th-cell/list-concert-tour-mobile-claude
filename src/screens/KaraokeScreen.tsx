@@ -128,18 +128,20 @@ export function KaraokeScreen({ route, navigation }: Props) {
   // Tap baris — loncat ke baris & mulai (cek premium jika Spotify terhubung)
   const tapLine = useCallback(async (idx: number) => {
     setShowHint(false);
-    if (spotify.isConnected && !spotify.isPremium) {
+    if (!spotify.isConnected) {
+      spotify.connect();
+      return;
+    }
+    if (!spotify.isPremium) {
       spotify.setError('⭐ Fitur ini butuh Spotify Premium.');
       return;
     }
-    if (spotify.isConnected) {
-      if (currentSong?.spotifyId) {
-        const ok = await spotify.playTrack(currentSong.spotifyId);
-        if (!ok) return;
-      } else if (spotify.progressMs > 0) {
-        const ok = await spotify.resume();
-        if (!ok) return;
-      }
+    if (currentSong?.spotifyId) {
+      const ok = await spotify.playTrack(currentSong.spotifyId);
+      if (!ok) return;
+    } else if (spotify.progressMs > 0) {
+      const ok = await spotify.resume();
+      if (!ok) return;
     }
     setLineIdx(idx);
     setIsPlaying(true);
@@ -150,21 +152,23 @@ export function KaraokeScreen({ route, navigation }: Props) {
   const togglePlay = useCallback(async () => {
     setShowHint(false);
     if (!isPlaying) {
-      // Guard premium — cek dulu sebelum apapun
-      if (spotify.isConnected && !spotify.isPremium) {
+      // Belum connect → langsung buka Spotify login
+      if (!spotify.isConnected) {
+        spotify.connect();
+        return;
+      }
+      // Terhubung tapi non-premium
+      if (!spotify.isPremium) {
         spotify.setError('⭐ Fitur ini butuh Spotify Premium.');
         return;
       }
       // START
-      if (spotify.isConnected) {
-        if (currentSong?.spotifyId) {
-          const ok = await spotify.playTrack(currentSong.spotifyId);
-          if (!ok) return;
-        } else if (spotify.progressMs > 0) {
-          const ok = await spotify.resume();
-          if (!ok) return;
-        }
-        // Tidak ada spotifyId dan tidak ada progress → timer only, lanjut
+      if (currentSong?.spotifyId) {
+        const ok = await spotify.playTrack(currentSong.spotifyId);
+        if (!ok) return;
+      } else if (spotify.progressMs > 0) {
+        const ok = await spotify.resume();
+        if (!ok) return;
       }
       if (lineIdx < 0) setLineIdx(0);
       setIsPlaying(true);
@@ -268,7 +272,7 @@ export function KaraokeScreen({ route, navigation }: Props) {
             1️⃣  Tekan ▶ Play — lirik menyala &amp; bergerak otomatis{'\n'}
             2️⃣  Ketuk baris mana saja untuk loncat ke sana{'\n'}
             3️⃣  Atur kecepatan dengan tombol <Text style={{ color: colors.accent, fontWeight: '700' }}>{speed}</Text> di kanan atas{'\n'}
-            4️⃣  Punya Spotify Premium? Hubungkan di atas untuk audio
+            4️⃣  Belum punya Spotify Premium? Tekan Play → otomatis diarahkan login
           </Text>
         </View>
       )}
