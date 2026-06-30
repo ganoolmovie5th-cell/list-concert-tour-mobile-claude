@@ -168,10 +168,10 @@ contact: r.contact || '',
 type:    r.type    || 'jual',   // TicketMarket only
 ```
 
-### VoteCountsProvider — di App.tsx (level paling atas)
-- `VoteCountsContext` wrap semua screen di `App.tsx`
-- `useVoteCountsCtx()` di `ConcertCard` — tidak perlu individual fetch per card
-- Jangan import `VoteCountsProvider` di screen individual — sudah ada di `App.tsx`
+### AppProvider — di App.tsx (level paling atas)
+- 4 provider lama (ThemeProvider, LanguageProvider, WishlistProvider, VoteCountsProvider) digabung ke `<AppProvider>` tunggal via `src/context/AppContext.tsx`
+- Context lama (`ThemeContext`, `LanguageContext`, `WishlistContext`, `VoteCountsContext`) dijadikan shim tipis yang delegate ke `useApp()` — import path konsumen tidak berubah
+- Jangan import provider individual di screen — sudah ada di `App.tsx` via `AppProvider`
 
 ### Search di HomeScreen
 - `TextInput` search **di luar FlatList** — keyboard tutup setiap keystroke jika di ListHeaderComponent
@@ -213,7 +213,7 @@ type:    r.type    || 'jual',   // TicketMarket only
 - Jangan buat PR — push langsung ke main
 - Jangan edit `concerts.ts` manual — sync dari `app.js` web
 - Jangan pakai `cid_going_v2` dll — harus `cid_going`
-- Jangan import `VoteCountsProvider` di screen — hanya di `App.tsx`
+- Jangan import provider individual di screen — hanya `AppProvider` di `App.tsx`
 
 ---
 
@@ -228,3 +228,10 @@ Hapus over-engineering tanpa mengubah perilaku:
 | Dedup WhatsApp href | `src/utils/helpers.ts`, `useTicketMarket.ts`, `useGroupBuying.ts`, `DetailScreen.tsx` | `buildWaHref` & `buildWaHrefGB` identik → satu fungsi di helpers |
 | Hilangkan hardcode key | `src/hooks/useNetworkStatus.ts` | Pakai `SUPA_URL`/`SUPA_KEY` dari `lib/supabase` |
 | Buang state mati | `src/hooks/useVoteCounts.ts` | `lastFetch` tak pernah dikonsumsi |
+
+## Ponytail Audit — Juli 2026
+
+Gabung 4 nested context providers menjadi 1 `AppProvider`:
+- `src/context/AppContext.tsx` — unified provider (Theme + Language + Wishlist + VoteCounts)
+- `ThemeContext`, `LanguageContext`, `WishlistContext`, `VoteCountsContext` dijadikan shim tipis yang re-export dari `useApp()` — semua import path konsumen tidak berubah
+- `App.tsx` — 4 provider berlapis → `<AppProvider><AppInner /></AppProvider>`
