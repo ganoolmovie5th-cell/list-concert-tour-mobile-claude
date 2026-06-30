@@ -1,31 +1,12 @@
-/**
- * VoteCountsContext — Global context untuk going/interested counts
- * Satu fetch untuk semua 44 konser, shared ke semua ConcertCard
- */
-import React, { createContext, useContext } from 'react';
-import { useVoteCounts, VoteCounts } from '../hooks/useVoteCounts';
-
-interface VoteCountsContextValue {
-  counts: VoteCounts;
-  loading: boolean;
-  getCount: (id: string) => { going: number; interested: number };
-  fetchAll: () => Promise<void>;
-}
-
-const VoteCountsContext = createContext<VoteCountsContextValue>({
-  counts: {},
-  loading: false,
-  getCount: () => ({ going: 0, interested: 0 }),
-  fetchAll: async () => {},
-});
+// ponytail: logic merged into AppContext. Shim preserves import paths for consumers.
+import React from 'react';
+import { useApp } from './AppContext';
 
 export function VoteCountsProvider({ children }: { children: React.ReactNode }) {
-  const value = useVoteCounts();
-  return (
-    <VoteCountsContext.Provider value={value}>
-      {children}
-    </VoteCountsContext.Provider>
-  );
+  return <>{children}</>;
 }
 
-export const useVoteCountsCtx = () => useContext(VoteCountsContext);
+export const useVoteCountsCtx = () => {
+  const { counts, voteCountsLoading: loading, getCount, fetchAll } = useApp();
+  return { counts, loading, getCount, fetchAll };
+};
