@@ -8,21 +8,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DB, getDeviceUID } from '../lib/supabase';
 
 type VoteType = 'going' | 'interested' | null;
-interface SocialData { going: number; interested: number; myVote: VoteType }
+interface SocialStore { going: number; interested: number; myVote: VoteType }
 
-// AsyncStorage keys (fallback) — HARUS sama persis dengan web (features.js)
-const KEY_GOING    = 'cid_going';
-const KEY_INTEREST = 'cid_interest';
-const KEY_MYVOTE   = 'cid_myvote';
+// AsyncStorage key (fallback) — single key, keyed by concertId
+// ponytail: was 3 separate keys; consolidated to match useReviews/useDiscussion pattern
+const LS_KEY = 'cid_social';
 
-async function lsGetCounts(key: string): Promise<Record<string, number>> {
-  try { return JSON.parse((await AsyncStorage.getItem(key)) || '{}'); } catch { return {}; }
+async function lsGet(concertId: string): Promise<SocialStore> {
+  try {
+    const all = JSON.parse((await AsyncStorage.getItem(LS_KEY)) || '{}');
+    return all[concertId] ?? { going: 0, interested: 0, myVote: null };
+  } catch { return { going: 0, interested: 0, myVote: null }; }
 }
-async function lsSaveCounts(key: string, d: Record<string, number>) {
-  await AsyncStorage.setItem(key, JSON.stringify(d));
-}
-async function lsGetMyVotes(): Promise<Record<string, VoteType>> {
-  try { return JSON.parse((await AsyncStorage.getItem(KEY_MYVOTE)) || '{}'); } catch { return {}; }
+async function lsSave(concertId: string, d: SocialStore) {
+  const all = JSON.parse((await AsyncStorage.getItem(LS_KEY)) || '{}');
+  await AsyncStorage.setItem(LS_KEY, JSON.stringify({ ...all, [concertId]: d }));
 }
 
 /** Dummy hash-based seed untuk konser past — konsisten dari concert ID */
@@ -34,8 +34,34 @@ function pastSeed(concertId: string) {
   };
 }
 
+/** Applies an optimistic vote toggle against AsyncStorage and returns the new state. */
+async function fallbackVote(
+  concertId: string,
+  type: 'going' | 'interested',
+): Promise<SocialStore> {
+  const stored = await lsGet(concertId);
+  const prev = stored.myVote;
+  let { going, interested } = stored;
+
+  if (prev === type) {
+    if (type === 'going')      going      = Math.max(0, going - 1);
+    if (type === 'interested') interested = Math.max(0, interested - 1);
+    stored.myVote = null;
+  } else {
+    if (prev === 'going')      going      = Math.max(0, going - 1);
+    if (prev === 'interested') interested = Math.max(0, interested - 1);
+    if (type === 'going')      going++;
+    if (type === 'interested') interested++;
+    stored.myVote = type;
+  }
+
+  const next: SocialStore = { going, interested, myVote: stored.myVote };
+  await lsSave(concertId, next);
+  return next;
+}
+
 export function useSocialFeatures(concertId: string, isPastConcert = false) {
-  const [data, setData] = useState<SocialData>({ going: 0, interested: 0, myVote: null });
+  const [data, setData] = useState<SocialStore>({ going: 0, interested: 0, myVote: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -71,14 +97,8 @@ export function useSocialFeatures(concertId: string, isPastConcert = false) {
         if (!cancelled) setData({ going, interested, myVote });
       } catch {
         // fallback AsyncStorage
-        const g  = await lsGetCounts(KEY_GOING);
-        const i  = await lsGetCounts(KEY_INTEREST);
-        const mv = await lsGetMyVotes();
-        if (!cancelled) setData({
-          going:      g[concertId]  ?? 0,
-          interested: i[concertId]  ?? 0,
-          myVote:     mv[concertId] ?? null,
-        });
+        const stored = await lsGet(concertId);
+        if (!cancelled) setData(stored);
       }
     })();
     return () => { cancelled = true; };
@@ -113,33 +133,9 @@ export function useSocialFeatures(concertId: string, isPastConcert = false) {
       return myVote;
     } catch {
       // fallback AsyncStorage
-      const g  = await lsGetCounts(KEY_GOING);
-      const i  = await lsGetCounts(KEY_INTEREST);
-      const mv = await lsGetMyVotes();
-      const prev = mv[concertId] || null;
-
-      if (g[concertId]  == null) g[concertId]  = 0;
-      if (i[concertId] == null) i[concertId] = 0;
-
-      if (prev === type) {
-        if (type === 'going')      g[concertId]  = Math.max(0, g[concertId]  - 1);
-        if (type === 'interested') i[concertId] = Math.max(0, i[concertId] - 1);
-        delete mv[concertId];
-      } else {
-        if (prev === 'going')      g[concertId]  = Math.max(0, g[concertId]  - 1);
-        if (prev === 'interested') i[concertId] = Math.max(0, i[concertId] - 1);
-        if (type === 'going')      g[concertId]++;
-        if (type === 'interested') i[concertId]++;
-        mv[concertId] = type;
-      }
-
-      await lsSaveCounts(KEY_GOING, g);
-      await lsSaveCounts(KEY_INTEREST, i);
-      await AsyncStorage.setItem(KEY_MYVOTE, JSON.stringify(mv));
-
-      const newVote = mv[concertId] || null;
-      setData({ going: g[concertId], interested: i[concertId], myVote: newVote });
-      return newVote;
+      const next = await fallbackVote(concertId, type);
+      setData(next);
+      return next.myVote;
     }
   }, [concertId, isPastConcert]);
 

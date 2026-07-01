@@ -2,23 +2,6 @@
  * useLiveSetlist.ts
  * Live Setlist crowdsource — penonton submit lagu yang sedang diputar
  * Supabase table: live_setlist
- *   id          uuid PK
- *   concert_id  text NOT NULL
- *   song_name   text NOT NULL
- *   song_number integer DEFAULT 1
- *   submitted_by text NOT NULL
- *   created_at  timestamptz DEFAULT now()
- *
- * SQL (jalankan sekali di Supabase dashboard):
- *   CREATE TABLE IF NOT EXISTS live_setlist (
- *     id           uuid DEFAULT gen_random_uuid() PRIMARY KEY,
- *     concert_id   text NOT NULL,
- *     song_name    text NOT NULL,
- *     song_number  integer DEFAULT 1,
- *     submitted_by text NOT NULL DEFAULT 'Anonim',
- *     created_at   timestamptz DEFAULT now()
- *   );
- *   CREATE INDEX IF NOT EXISTS idx_live_setlist_concert ON live_setlist(concert_id, created_at DESC);
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
