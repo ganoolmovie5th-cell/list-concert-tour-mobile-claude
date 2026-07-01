@@ -234,3 +234,12 @@ Audit over-engineering (ponytail) — hapus kode berlebihan tanpa mengubah peril
 ---
 
 © 2026 ConcertID. Dibuat dengan ❤️ untuk komunitas fans musik Indonesia.
+
+### Audit Lanjutan (Juli 2026)
+
+Hapus shim context & dedup helper. Verifikasi: `npx expo export --platform android` sukses.
+- Hapus 4 file context shim (`ThemeContext`, `LanguageContext`, `WishlistContext`, `VoteCountsContext`) — semua wrapper hanya forward ke `AppContext`; 13+ consumer diupdate impor `useApp` dari `AppContext` langsung
+- Hapus `getRedirectUri()` di `SpotifyService.ts` → call site pakai konstanta `REDIRECT_URI` langsung
+- Ekstrak `makeUID(prefix)` di `src/utils/helpers.ts`; hapus 3 implementasi lokal identik di `useInAppChat`, `useGroupBuying`, `useTicketMarket`
+- `src/hooks/useConcertCheckin.ts`: ganti `require('expo-location')` lazy di dalam try/catch → static `import * as Location`
+- `src/hooks/useFanPhotos.ts`: pindah hardcoded `SUPA_KEY` → import dari `lib/supabase`
