@@ -13,8 +13,7 @@ export const SCOPES       = [
   'user-read-currently-playing',
 ].join(' ');
 
-// Tidak perlu lagi Linking.createURL — URI sudah static
-export function getRedirectUri(): string { return REDIRECT_URI; }const K_TOKEN    = 'sp_access_token';
+const K_TOKEN    = 'sp_access_token';
 const K_REFRESH  = 'sp_refresh_token';
 const K_EXPIRY   = 'sp_token_expiry';
 const K_VERIFIER = 'sp_code_verifier';
@@ -94,7 +93,7 @@ function genChallenge(verifier: string): string { return base64url(sha256Bytes(v
 
 // ── Auth URL (always PKCE) ────────────────────────────────────────
 export async function buildAuthUrl(): Promise<{ url: string; redirectUri: string }> {
-  const redirectUri = getRedirectUri();
+  const redirectUri = REDIRECT_URI;
   const verifier    = genVerifier();
   const challenge   = genChallenge(verifier);
   await AsyncStorage.setItem(K_VERIFIER,  verifier);

@@ -6,9 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useWishlist } from '../context/WishlistContext';
+import { useApp } from '../context/AppContext';
 import { useSocialFeatures } from '../hooks/useSocialFeatures';
 import { useDiscussion } from '../hooks/useDiscussion';
 import { useReviews } from '../hooks/useReviews';
@@ -27,7 +25,6 @@ import { CONCERTS, SETLISTS, ARTIST_SOCIALS, SPOTIFY_ARTISTS } from '../data/con
 import { getSeatMap } from '../data/seatMaps';
 import { LYRICS } from '../data/lyrics';
 import { getGoogleCalendarUrl, isPast, timeAgo, buildWaHref } from '../utils/helpers';
-import { useVoteCountsCtx } from '../context/VoteCountsContext';
 
 const { width } = Dimensions.get('window');
 type Tab = 'info' | 'setlist' | 'diskusi' | 'review' | 'live';
@@ -43,9 +40,7 @@ export function DetailScreen({ route, navigation }: any) {
   const past = concert ? isPast(concert) : false;
   const isRumor = concert ? concert.confirmStatus === 'rumor' : false;
 
-  const { colors } = useTheme();
-  const { t } = useLanguage();
-  const { toggle: toggleWishlist, isWishlisted } = useWishlist();
+  const { colors, t, toggleWishlist, isWishlisted } = useApp();
   const { going, interested, myVote, vote } = useSocialFeatures(concertId, past);
   const { comments, addComment, likeComment } = useDiscussion(concertId);
   const { reviews, hasReviewed, avgRating, addReview, likeReview } = useReviews(concertId);
@@ -56,7 +51,7 @@ export function DetailScreen({ route, navigation }: any) {
   const { checkedIn, checking, checkInCount, checkIn } = useConcertCheckin(concert || { id: concertId } as any);
   const [activeChatPostUid, setActiveChatPostUid] = useState<string | null>(null);
   const { messages: chatMessages, myUid: chatMyUid, sendMessage: sendChatMsg } = useInAppChat(activeChatPostUid);
-  const { getCount } = useVoteCountsCtx();
+  const { getCount } = useApp();
   const { going: globalGoing, interested: globalInterested } = getCount(concertId);
 
   // Live Setlist

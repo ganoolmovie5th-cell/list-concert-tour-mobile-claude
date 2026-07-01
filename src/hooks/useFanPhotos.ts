@@ -10,11 +10,10 @@ import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { DB, getDeviceUID, SUPA_URL } from '../lib/supabase';
+import { DB, getDeviceUID, SUPA_URL, SUPA_KEY } from '../lib/supabase';
 
-const LS_KEY   = 'cid_fan_photos';
-const BUCKET   = 'fan-photos';
-const SUPA_KEY = 'sb_publishable_G9oVhoD74guR61dZ755SYw_QwcrRKmc';
+const LS_KEY = 'cid_fan_photos';
+const BUCKET = 'fan-photos';
 
 function lsKey(id: string) { return `${LS_KEY}_${id}`; }
 

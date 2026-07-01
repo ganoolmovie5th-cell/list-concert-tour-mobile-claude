@@ -1,8 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 
 interface SearchBarProps {
   value: string;
@@ -10,8 +9,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ value, onChangeText }: SearchBarProps) {
-  const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { colors, t } = useApp();
   // Local state agar keyboard tidak hilang saat parent re-render
   const [localValue, setLocalValue] = useState(value);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

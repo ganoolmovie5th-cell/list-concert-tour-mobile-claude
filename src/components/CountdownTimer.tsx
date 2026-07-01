@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
+import { useApp } from '../context/AppContext';
 import { useCountdown } from '../hooks/useCountdown';
 
 interface CountdownTimerProps {
@@ -8,7 +8,7 @@ interface CountdownTimerProps {
 }
 
 export function CountdownTimer({ rawDate }: CountdownTimerProps) {
-  const { colors } = useTheme();
+  const { colors } = useApp();
   const cd = useCountdown(rawDate);
 
   if (!cd) {

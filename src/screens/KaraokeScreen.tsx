@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
+import { useApp } from '../context/AppContext';
 import { LYRICS, SongLyrics } from '../data/lyrics';
 import { SETLISTS } from '../data/concerts';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
@@ -27,7 +27,7 @@ const TITLE_H = 160;
 
 export function KaraokeScreen({ route, navigation }: Props) {
   const { concertId, concertArtist } = route.params;
-  const { colors, isDark } = useTheme();
+  const { colors, isDark } = useApp();
   const insets = useSafeAreaInsets();
 
   const songs: SongLyrics[] = LYRICS[concertId] || [];

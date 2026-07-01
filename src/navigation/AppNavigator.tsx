@@ -4,9 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useWishlist } from '../context/WishlistContext';
+import { useApp } from '../context/AppContext';
 import { HomeScreen } from '../screens/HomeScreen';
 import { WishlistScreen } from '../screens/WishlistScreen';
 import { CalendarScreen } from '../screens/CalendarScreen';
@@ -80,9 +78,7 @@ function WishlistBadge({ count }: { count: number }) {
 }
 
 export function AppNavigator() {
-  const { colors, isDark } = useTheme();
-  const { t } = useLanguage();
-  const { wishlist } = useWishlist();
+  const { colors, isDark, t, wishlist } = useApp();
 
   const navTheme = isDark
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.tabBar, border: colors.tabBarBorder, primary: colors.accent, text: colors.text, notification: colors.accent } }

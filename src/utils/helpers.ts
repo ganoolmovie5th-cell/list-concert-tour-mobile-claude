@@ -1,4 +1,5 @@
 import { Concert, SortOption, FilterType } from '../types';
+export function makeUID(prefix: string): string { return prefix + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 export const TODAY = new Date();
 export const isPast = (c: Concert) => c.rawDate < TODAY;
 export const isUpcoming = (c: Concert) => c.rawDate >= TODAY;

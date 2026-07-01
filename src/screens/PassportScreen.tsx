@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
+import { useApp } from '../context/AppContext';
 import { useBeenThere } from '../hooks/useBeenThere';
 import { CONCERTS, ARTIST_IMAGES } from '../data/concerts';
 import { isPast } from '../utils/helpers';
@@ -28,7 +28,7 @@ function getAchievement(count: number) {
 }
 
 export function PassportScreen({ navigation }: any) {
-  const { colors } = useTheme();
+  const { colors } = useApp();
   const { hasAttended } = useBeenThere();
 
   const attendedConcerts = useMemo(

@@ -6,11 +6,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DB, getDeviceUID } from '../lib/supabase';
+import { makeUID } from '../utils/helpers';
 
 const LS_KEY = 'cid_group_buying';
 
 function lsKey(id: string) { return `${LS_KEY}_${id}`; }
-function genPostUID() { return 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
 export interface GroupPost {
   uid: string;
@@ -71,7 +71,7 @@ export function useGroupBuying(concertId: string) {
   ) => {
     if (!name.trim() || !contact.trim()) return false;
     const uid     = await getDeviceUID();
-    const postUid = genPostUID();
+    const postUid = makeUID('p_');
     const item: GroupPost = {
       uid: postUid, ownerUid: uid,
       name:     name.trim().slice(0, 30),

@@ -1,18 +1,14 @@
 import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useWishlist } from '../context/WishlistContext';
+import { useApp } from '../context/AppContext';
 import { ConcertCard } from '../components/ConcertCard';
 import { Toast } from '../components/Toast';
 import { CONCERTS } from '../data/concerts';
 import { useState } from 'react';
 
 export function WishlistScreen({ navigation }: any) {
-  const { colors } = useTheme();
-  const { t } = useLanguage();
-  const { wishlist, toggle: toggleWishlist, isWishlisted } = useWishlist();
+  const { colors, t, wishlist, toggleWishlist, isWishlisted } = useApp();
   const [toast, setToast] = useState({ message: '', visible: false, type: 'info' as 'success' | 'error' | 'info' });
 
   const wishlisted = CONCERTS.filter(c => wishlist.has(c.id));

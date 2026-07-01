@@ -7,8 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 
 const CATEGORIES = [
   { value: 'kritik',   label: '🔴 Kritik' },
@@ -27,8 +26,7 @@ const EMAILJS_PRIVATE_KEY = 'KHXx2RsnBVjAp4XyYw01U';
 const MAILCHIMP_ENDPOINT = 'https://www.list-concert-tour.web.id/api/subscribe';
 
 export function NewsletterScreen() {
-  const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { colors, t } = useApp();
 
   // Newsletter state
   const [email, setEmail]       = useState('');

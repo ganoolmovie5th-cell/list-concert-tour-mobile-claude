@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable, Share, StyleSheet, Clipboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 import { Concert } from '../types';
 import { getShareText } from '../utils/helpers';
 
@@ -15,8 +14,7 @@ interface ShareSheetProps {
 }
 
 export function ShareSheet({ visible, onClose, concert, onCopied }: ShareSheetProps) {
-  const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { colors, t } = useApp();
   const shareText = getShareText(concert);
   const shareUrl = `https://www.list-concert-tour.web.id`;
 

@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 
 const VENUES = [
   { name: 'Gelora Bung Karno (GBK)', cap: '~80.000', area: 'Senayan, Jakarta Pusat' },
@@ -21,8 +20,7 @@ const PLATFORMS = [
 ];
 
 export function MoreScreen({ navigation }: any) {
-  const { colors, isDark, toggle } = useTheme();
-  const { lang, toggleLang, t } = useLanguage();
+  const { colors, isDark, toggle, lang, toggleLang, t } = useApp();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>

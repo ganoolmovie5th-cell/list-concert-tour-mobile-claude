@@ -5,10 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useWishlist } from '../context/WishlistContext';
-import { useVoteCountsCtx } from '../context/VoteCountsContext';
+import { useApp } from '../context/AppContext';
 import { FilterBar } from '../components/FilterBar';
 import { SortPicker } from '../components/SortPicker';
 import { ConcertCard } from '../components/ConcertCard';
@@ -89,10 +86,7 @@ const FilterSortHeader = memo(function FilterSortHeader({
 // ────────────────────────────────────────────────────────────────────────────
 
 export function HomeScreen({ navigation }: any) {
-  const { colors, isDark, toggle } = useTheme();
-  const { lang, toggleLang, t } = useLanguage();
-  const { wishlist, toggle: toggleWishlist, isWishlisted } = useWishlist();
-  const { fetchAll: refreshCounts } = useVoteCountsCtx();
+  const { colors, isDark, toggle, lang, toggleLang, t, wishlist, toggleWishlist, isWishlisted, fetchAll: refreshCounts } = useApp();
   const { isOnline } = useNetworkStatus();
 
   const [search, setSearch] = useState('');

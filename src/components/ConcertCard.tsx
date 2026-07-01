@@ -1,9 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useVoteCountsCtx } from '../context/VoteCountsContext';
+import { useApp } from '../context/AppContext';
 import { Concert } from '../types';
 import { genreColor, isPast } from '../utils/helpers';
 import { fmtCount } from '../utils/helpers';
@@ -16,9 +14,7 @@ interface ConcertCardProps {
 }
 
 export function ConcertCard({ concert, isWishlisted, onPress, onWishlist }: ConcertCardProps) {
-  const { colors } = useTheme();
-  const { t } = useLanguage();
-  const { getCount } = useVoteCountsCtx();
+  const { colors, t, getCount } = useApp();
   const past = isPast(concert);
   const gColor = genreColor(concert.genre, colors as unknown as Record<string, string>);
   const { going } = getCount(concert.id);

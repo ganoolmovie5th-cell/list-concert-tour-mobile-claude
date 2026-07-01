@@ -1,7 +1,6 @@
 import React from 'react';
 import { ScrollView, TouchableOpacity, Text, View, StyleSheet } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 import { FilterType } from '../types';
 
 interface FilterBarProps {
@@ -13,8 +12,7 @@ interface FilterBarProps {
 const FILTERS: FilterType[] = ['all','confirmed','rumor','kpop','pop','rock','jazz','indie','upcoming','past','wishlist'];
 
 export function FilterBar({ active, onSelect, wishlistCount = 0 }: FilterBarProps) {
-  const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { colors, t } = useApp();
 
   const labels: Record<FilterType, string> = {
     all: t('filterAll'), confirmed: t('filterConfirmed'), rumor: t('filterRumor'),

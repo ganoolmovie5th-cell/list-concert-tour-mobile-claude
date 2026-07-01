@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 import { SortOption } from '../types';
 
 interface SortPickerProps {
@@ -13,8 +12,7 @@ interface SortPickerProps {
 const SORTS: SortOption[] = ['date-asc','date-desc','price-asc','price-desc','name-asc'];
 
 export function SortPicker({ value, onChange }: SortPickerProps) {
-  const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { colors, t } = useApp();
   const [open, setOpen] = useState(false);
 
   const labels: Record<SortOption, string> = {

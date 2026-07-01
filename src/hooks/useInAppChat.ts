@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DB, getDeviceUID } from '../lib/supabase';
+import { makeUID } from '../utils/helpers';
 
 export interface ChatMessage {
   uid: string;
@@ -20,11 +21,10 @@ export interface ChatMessage {
 const LS_PREFIX = 'cid_gb_chat_';
 
 function lsKey(postUid: string) { return `${LS_PREFIX}${postUid}`; }
-function genUID() { return 'cm_' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
 function mapRow(r: any, myUid: string): ChatMessage {
   return {
-    uid:        r.msg_uid   || r.uid || genUID(),
+    uid:        r.msg_uid   || r.uid || makeUID('cm_'),
     postUid:    r.post_uid,
     senderUid:  r.sender_uid,
     senderName: r.sender_name || 'Anonim',
@@ -87,7 +87,7 @@ export function useInAppChat(postUid: string | null) {
   ): Promise<boolean> => {
     if (!postUid || !text.trim()) return false;
     const uid    = await getDeviceUID();
-    const msgUid = genUID();
+    const msgUid = makeUID('cm_');
     const msg: ChatMessage = {
       uid:        msgUid,
       postUid,

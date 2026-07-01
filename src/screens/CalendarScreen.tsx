@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 import { CONCERTS } from '../data/concerts';
 import { genreColor } from '../utils/helpers';
 import { Concert } from '../types';
@@ -21,8 +20,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 }
 
 export function CalendarScreen({ navigation }: any) {
-  const { colors } = useTheme();
-  const { lang, t } = useLanguage();
+  const { colors, lang, t } = useApp();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());

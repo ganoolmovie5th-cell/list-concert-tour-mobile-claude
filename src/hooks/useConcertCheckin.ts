@@ -10,10 +10,7 @@ import { DB, getDeviceUID } from '../lib/supabase';
 import { Concert } from '../types';
 import { isPast } from '../utils/helpers';
 import { findVenueCoord, distanceMeters } from '../data/venueCoordinates';
-
-// Lazy import expo-location
-let Location: any = null;
-try { Location = require('expo-location'); } catch {}
+import * as Location from 'expo-location';
 
 const LS_KEY = 'cid_checkins';
 
@@ -76,11 +73,6 @@ export function useConcertCheckin(concert: Concert) {
     if (!isConcertDay) {
       const daysLeft = Math.ceil((concertDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       return { success: false, message: `📅 Check-in hanya tersedia pada hari konser (${daysLeft} hari lagi).` };
-    }
-
-    // Require GPS
-    if (!Location) {
-      return { success: false, message: '📍 GPS tidak tersedia di perangkat ini.' };
     }
 
     setChecking(true);
