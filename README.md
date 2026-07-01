@@ -243,3 +243,8 @@ Hapus shim context & dedup helper. Verifikasi: `npx expo export --platform andro
 - Ekstrak `makeUID(prefix)` di `src/utils/helpers.ts`; hapus 3 implementasi lokal identik di `useInAppChat`, `useGroupBuying`, `useTicketMarket`
 - `src/hooks/useConcertCheckin.ts`: ganti `require('expo-location')` lazy di dalam try/catch → static `import * as Location`
 - `src/hooks/useFanPhotos.ts`: pindah hardcoded `SUPA_KEY` → import dari `lib/supabase`
+
+### Audit Lanjutan 2 (Juli 2026)
+
+- `src/hooks/useSocialFeatures.ts`: ekstrak `fallbackVote()` helper — logika vote fallback 27 baris duplikat di 2 branch → 1 fungsi; konsolidasi 3 AsyncStorage key (`cid_going`, `cid_interest`, `cid_myvote`) → 1 key `cid_social` dengan shape `{ [concertId]: SocialStore }`; kolaps `SocialData` interface ke `SocialStore`
+- `src/hooks/useLiveSetlist.ts`: hapus blok SQL `CREATE TABLE`/`CREATE INDEX` dari JSDoc — stale, schema otoritatif ada di migration
