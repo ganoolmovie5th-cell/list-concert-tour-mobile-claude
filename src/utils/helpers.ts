@@ -45,8 +45,9 @@ export const sortConcerts = (concerts: Concert[], sort: SortOption) => {
 };
 export const getShareText = (c: Concert) =>
   `🎵 ${c.artist}\n${c.tour}\n📅 ${c.dates[0]}\n📍 ${c.venue}, ${c.city}\n💰 ${c.priceRange}\n${c.confirmStatus==='confirmed'?'✅ Confirmed':'🔮 Rumor'}\n\nInfo: https://www.list-concert-tour.web.id`;
+// ponytail: direct lookup, no per-call object allocation
 export const genreColor = (genre: string, colors: Record<string,string>) =>
-  ({kpop: colors.kpop, pop: colors.pop, rock: colors.rock, jazz: colors.jazz, indie: colors.indie}[genre] || colors.accent);
+  colors[genre] ?? colors.accent;
 export const getGoogleCalendarUrl = (c: Concert) => {
   if (c.confirmStatus==='rumor') return null;
   const s = c.rawDate.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
