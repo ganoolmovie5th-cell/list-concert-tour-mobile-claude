@@ -248,3 +248,9 @@ Hapus shim context & dedup helper. Verifikasi: `npx expo export --platform andro
 
 - `src/hooks/useSocialFeatures.ts`: ekstrak `fallbackVote()` helper — logika vote fallback 27 baris duplikat di 2 branch → 1 fungsi; konsolidasi 3 AsyncStorage key (`cid_going`, `cid_interest`, `cid_myvote`) → 1 key `cid_social` dengan shape `{ [concertId]: SocialStore }`; kolaps `SocialData` interface ke `SocialStore`
 - `src/hooks/useLiveSetlist.ts`: hapus blok SQL `CREATE TABLE`/`CREATE INDEX` dari JSDoc — stale, schema otoritatif ada di migration
+
+### Audit Lanjutan 3 (Juli 2026)
+
+- `src/utils/helpers.ts`: `genreColor()` — hapus per-call object allocation; pakai `colors[genre] ?? colors.accent` langsung
+- `src/hooks/useNetworkStatus.ts`: ganti Supabase HEAD fetch probe → `expo-network`'s `getNetworkStateAsync()` (native OS call, zero network cost); tambah `expo-network ~7.0.4` ke `package.json`
+- Dipertahankan: `rumorDetail` & `lineup` di Concert type — keduanya aktif digunakan di `DetailScreen.tsx`
