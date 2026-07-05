@@ -189,6 +189,7 @@ src/
 | Karaoke Mode | `KaraokeScreen.tsx`, `lyrics.ts` | Lirik 8 artis, highlight baris aktif, auto-advance, speed control |
 | Concert Check-in | `useConcertCheckin.ts` | GPS radius 1km, hanya hari-H confirmed |
 | Spotify OAuth + Playback | `SpotifyService.ts`, `useSpotifyPlayer.ts` | PKCE, expo-web-browser, Premium only |
+| Post-Concert Summary | `PostConcertSummary.tsx`, `DetailScreen.tsx` | Recap konser past: reviews + foto + setlist + going count (Juli 2026) |
 
 ### Supabase Tables Baru (run di SQL Editor):
 ```sql
