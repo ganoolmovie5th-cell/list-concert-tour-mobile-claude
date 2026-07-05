@@ -156,12 +156,12 @@ src/
 
 ---
 
-## 🔄 Riwayat Sync Terakhir (Juni 2026)
+## 🔄 Riwayat Sync Terakhir (Juli 2026)
 
 | Item | Status |
 |---|---|
 | Data konser **44 entries** | ✅ Sync |
-| Guns N' Roses → **confirmed** (21 Nov 2026, Stadion Madya GBK) | ✅ Sync |
+| Guns N' Roses → harga tiket, waktu, platform TipTip (Jul 2026) | ✅ Sync |
 | `ARTIST_IMAGES` URL dari web | ✅ Sync |
 | `ARTIST_SOCIALS` handles | ✅ Sync |
 | `SETLISTS` + `SPOTIFY_ARTISTS` | ✅ Sync |
