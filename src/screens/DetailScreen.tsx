@@ -25,6 +25,7 @@ import { CONCERTS, SETLISTS, ARTIST_SOCIALS, SPOTIFY_ARTISTS } from '../data/con
 import { getSeatMap } from '../data/seatMaps';
 import { LYRICS } from '../data/lyrics';
 import { getGoogleCalendarUrl, isPast, timeAgo, buildWaHref } from '../utils/helpers';
+import { PostConcertSummary } from '../components/PostConcertSummary';
 
 const { width } = Dimensions.get('window');
 type Tab = 'info' | 'setlist' | 'diskusi' | 'review' | 'live';
@@ -416,6 +417,9 @@ export function DetailScreen({ route, navigation }: any) {
                 </Text>
               </TouchableOpacity>
             )}
+
+            {/* Post-Concert Summary — past only */}
+            {past && <PostConcertSummary concertId={concertId} concertName={concert.artist} />}
 
             {/* Concert Check-in — hanya untuk confirmed upcoming, tersedia di hari konser */}
             {!past && !isRumor && (
