@@ -16,11 +16,12 @@ Versi mobile dari [list-concert-tour.web.id](https://www.list-concert-tour.web.i
 | Navigation | React Navigation 6 (Bottom Tabs + Stack) |
 | Local Storage | AsyncStorage (wishlist, fallback, device UID) |
 | Media | expo-image-picker + expo-image-manipulator + expo-file-system |
-| Notifications | expo-notifications (push notif + reminders H-7, H-1) |
+| Notifications | expo-notifications (push notif + reminders H-7, H-1, custom alerts) |
 | Location | expo-location (concert check-in geolocation) |
 | Browser | expo-web-browser (Spotify OAuth) |
 | Database | Supabase (PostgreSQL REST API) — sync web & mobile |
 | Storage | Supabase Storage (foto fans) |
+| Offline | expo-sqlite (offline concert cache, H-7 reminders persist) |
 
 ---
 
