@@ -13,3 +13,7 @@ web-build/
 ios/
 android/
 .DS_Store
+
+# AI IDE config
+.kiro/
+.claude/
