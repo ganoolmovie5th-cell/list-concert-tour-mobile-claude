@@ -8,7 +8,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { DB, getDeviceUID, SUPA_URL, SUPA_KEY } from '../lib/supabase';
 

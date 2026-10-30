@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { DB } from '../lib/supabase';
 
 interface Props {
   concertId: string;
@@ -26,47 +26,35 @@ export function PostConcertSummary({ concertId, concertName }: Props) {
 
   async function loadSummary() {
     try {
-      // Fetch reviews
-      const { data: reviews } = await supabase
-        .from('reviews')
-        .select('text,rating,author')
-        .eq('concert_id', concertId)
-        .order('created_at', { ascending: false })
-        .limit(3);
+      const cid = encodeURIComponent(concertId);
+
+      // Fetch reviews (3 terbaru)
+      const reviews = await DB.select('reviews',
+        `concert_id=eq.${cid}&select=text,rating,author&order=created_at.desc&limit=3`);
 
       // Fetch photo count
-      const { count: photoCount } = await supabase
-        .from('fan_photos')
-        .select('id', { count: 'exact', head: true })
-        .eq('concert_id', concertId);
+      const photos = await DB.select('fan_photos', `concert_id=eq.${cid}&select=id`);
 
       // Fetch going count
-      const { data: votes } = await supabase
-        .from('concert_votes')
-        .select('type')
-        .eq('concert_id', concertId)
-        .eq('type', 'going');
+      const votes = await DB.select('concert_votes',
+        `concert_id=eq.${cid}&type=eq.going&select=type`);
 
       // Fetch setlist
-      const { data: setlistData } = await supabase
-        .from('live_setlist')
-        .select('song_name,song_number')
-        .eq('concert_id', concertId)
-        .order('song_number', { ascending: true })
-        .limit(10);
+      const setlistData = await DB.select('live_setlist',
+        `concert_id=eq.${cid}&select=song_name,song_number&order=song_number.asc&limit=10`);
 
       const revs = reviews || [];
       const avgRating = revs.length > 0
-        ? revs.reduce((sum, r) => sum + (r.rating || 0), 0) / revs.length
+        ? revs.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / revs.length
         : 0;
 
       setData({
         reviewCount: revs.length,
         avgRating,
-        photoCount: photoCount || 0,
+        photoCount: (photos || []).length,
         goingCount: (votes || []).length,
-        topReviews: revs.map((r) => ({ text: r.text || '', rating: r.rating || 0, author: r.author || 'Anonim' })),
-        setlist: (setlistData || []).map((s) => s.song_name),
+        topReviews: revs.map((r: any) => ({ text: r.text || '', rating: r.rating || 0, author: r.author || 'Anonim' })),
+        setlist: (setlistData || []).map((s: any) => s.song_name),
       });
     } catch {
       // ponytail: non-critical, show empty state

@@ -16,7 +16,7 @@ interface AppContextValue {
   // Theme
   mode: ThemeMode;
   isDark: boolean;
-  colors: typeof Colors.dark;
+  colors: typeof Colors.dark | typeof Colors.light;
   setMode: (m: ThemeMode) => void;
   toggle: () => void;
   // Language
