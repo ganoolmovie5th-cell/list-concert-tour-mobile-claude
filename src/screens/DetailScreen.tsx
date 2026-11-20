@@ -257,9 +257,11 @@ export function DetailScreen({ route, navigation }: any) {
     ...(!past && !isRumor ? [{ key: 'live' as Tab, label: '🎙️ Live' }] : []),
   ];
 
-  const statusColor = concert.confirmStatus === 'confirmed' ? (past ? colors.past : colors.confirmed) : colors.rumor;
-  const statusBg = concert.confirmStatus === 'confirmed' ? (past ? colors.pastBg : colors.confirmedBg) : colors.rumorBg;
-  const statusLabel = concert.confirmStatus === 'confirmed' ? (past ? '⏰ Past' : '✅ Confirmed') : '🔮 Rumor';
+  const statusColor = concert.confirmStatus === 'rumor' ? colors.rumor : (past ? colors.past : colors.confirmed);
+  const statusBg = concert.confirmStatus === 'rumor' ? colors.rumorBg : (past ? colors.pastBg : colors.confirmedBg);
+  const statusLabel = concert.confirmStatus === 'cancelled' ? '🚫 Dibatalkan'
+    : concert.confirmStatus === 'rumor' ? '🔮 Rumor'
+    : (past ? '⏰ Past' : '✅ Confirmed');
 
   // Concert is happening today
   const todayStr = new Date().toDateString();

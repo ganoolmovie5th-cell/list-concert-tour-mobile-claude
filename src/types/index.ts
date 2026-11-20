@@ -1,4 +1,4 @@
-export type ConfirmStatus = 'confirmed' | 'rumor';
+export type ConfirmStatus = 'confirmed' | 'rumor' | 'cancelled';
 export type Genre = 'kpop' | 'pop' | 'rock' | 'jazz' | 'indie';
 export type SortOption = 'date-asc' | 'date-desc' | 'price-asc' | 'price-desc' | 'name-asc';
 export type FilterType = 'all' | 'confirmed' | 'rumor' | 'kpop' | 'pop' | 'rock' | 'jazz' | 'indie' | 'upcoming' | 'past' | 'wishlist';
@@ -7,7 +7,7 @@ export type Lang = 'id' | 'en';
 export interface TicketCategory { name: string; price: string; }
 export interface Concert {
   id: string; artist: string; tour: string; genre: Genre; emoji: string;
-  dates: string[]; rawDate: Date; time: string; venue: string; city: string;
+  dates: string[]; rawDate: Date; endDate?: Date; time: string; venue: string; city: string;
   promotor: string; ticketPlatform: string; ticketUrl: string;
   priceRange: string; priceMin: number; priceMax: number;
   ticketCategories: TicketCategory[]; confirmStatus: ConfirmStatus; hot: boolean;

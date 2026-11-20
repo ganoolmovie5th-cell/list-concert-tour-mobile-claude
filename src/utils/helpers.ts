@@ -1,8 +1,11 @@
 import { Concert, SortOption, FilterType } from '../types';
 export function makeUID(prefix: string): string { return prefix + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 export const TODAY = new Date();
-export const isPast = (c: Concert) => c.rawDate < TODAY;
-export const isUpcoming = (c: Concert) => c.rawDate >= TODAY;
+// Hari terakhir konser: endDate (jika tanggal tidak berurutan) atau rawDate + (jumlah tanggal - 1) hari
+export const lastDay = (c: Concert) => c.endDate ?? new Date(c.rawDate.getTime() + Math.max(0, c.dates.length - 1) * 86400000);
+// Lewat = hari terakhir sudah berakhir (24.00 WIB = 17.00 UTC). Konser dibatalkan tidak pernah mendatang.
+export const isPast = (c: Concert) => c.confirmStatus === 'cancelled' || lastDay(c).getTime() + 17 * 3600000 < TODAY.getTime();
+export const isUpcoming = (c: Concert) => !isPast(c);
 export const fmtCount = (n: number) => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'k' : String(n);
 export function buildWaHref(contact: string): string | null {
   const digits = contact.replace(/\D/g, '');
@@ -44,7 +47,7 @@ export const sortConcerts = (concerts: Concert[], sort: SortOption) => {
   return l;
 };
 export const getShareText = (c: Concert) =>
-  `🎵 ${c.artist}\n${c.tour}\n📅 ${c.dates[0]}\n📍 ${c.venue}, ${c.city}\n💰 ${c.priceRange}\n${c.confirmStatus==='confirmed'?'✅ Confirmed':'🔮 Rumor'}\n\nInfo: https://www.list-concert-tour.web.id`;
+  `🎵 ${c.artist}\n${c.tour}\n📅 ${c.dates[0]}\n📍 ${c.venue}, ${c.city}\n💰 ${c.priceRange}\n${c.confirmStatus==='cancelled'?'🚫 Dibatalkan':c.confirmStatus==='confirmed'?'✅ Confirmed':'🔮 Rumor'}\n\nInfo: https://www.list-concert-tour.web.id`;
 // ponytail: direct lookup, no per-call object allocation
 export const genreColor = (genre: string, colors: Record<string,string>) =>
   colors[genre] ?? colors.accent;

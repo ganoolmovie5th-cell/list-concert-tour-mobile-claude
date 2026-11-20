@@ -19,14 +19,14 @@ export function ConcertCard({ concert, isWishlisted, onPress, onWishlist }: Conc
   const gColor = genreColor(concert.genre, colors as unknown as Record<string, string>);
   const { going } = getCount(concert.id);
 
-  const statusColor = concert.confirmStatus === 'confirmed'
-    ? (past ? colors.past : colors.confirmed)
-    : colors.rumor;
-  const statusBg = concert.confirmStatus === 'confirmed'
-    ? (past ? colors.pastBg : colors.confirmedBg)
-    : colors.rumorBg;
-  const statusLabel = concert.confirmStatus === 'confirmed'
-    ? (past ? '⏰ Past' : '✅ Confirmed') : '🔮 Rumor';
+  const cancelled = concert.confirmStatus === 'cancelled';
+  const statusColor = concert.confirmStatus === 'rumor' ? colors.rumor
+    : (past ? colors.past : colors.confirmed);
+  const statusBg = concert.confirmStatus === 'rumor' ? colors.rumorBg
+    : (past ? colors.pastBg : colors.confirmedBg);
+  const statusLabel = cancelled ? '🚫 Dibatalkan'
+    : concert.confirmStatus === 'rumor' ? '🔮 Rumor'
+    : (past ? '⏰ Past' : '✅ Confirmed');
 
   return (
     <TouchableOpacity style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={onPress} activeOpacity={0.85}>
