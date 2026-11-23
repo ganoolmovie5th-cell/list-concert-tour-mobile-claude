@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   stampImg: { width: '100%', height: '100%' },
   stampImgPlaceholder: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   stampEmoji: { fontSize: 36 },
-  stampOverlay: { ...StyleSheet.absoluteFillObject },
+  stampOverlay: { ...StyleSheet.absoluteFill },
   stampMark: { position: 'absolute', top: 8, right: 8, borderWidth: 2, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, transform: [{ rotate: '-12deg' }] },
   stampMarkText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   stampInfo: { padding: 10, gap: 4 },

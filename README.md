@@ -2,7 +2,7 @@
 
 Aplikasi mobile jadwal konser internasional di Indonesia 2025-2027. Versi mobile dari ConcertID web, dengan sync data Supabase real-time.
 
-**Tech Stack:** React Native · Expo SDK 54 · TypeScript · React Navigation · Supabase · AsyncStorage
+**Tech Stack:** React Native · Expo SDK 58 · TypeScript · React Navigation · Supabase · AsyncStorage
 
 **Web:** [list-concert-tour.web.id](https://www.list-concert-tour.web.id)
 

@@ -9,6 +9,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Animated, ActivityIndicator,
+  type ScrollViewInstance,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,7 +43,7 @@ export function KaraokeScreen({ route, navigation }: Props) {
   const [speed,     setSpeed]     = useState<string>('1x');
   const [showHint,  setShowHint]  = useState(true);
 
-  const scrollRef   = useRef<ScrollView>(null);
+  const scrollRef   = useRef<ScrollViewInstance>(null);
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseAnim   = useRef(new Animated.Value(1)).current;
   const scrollOff   = useRef(0);
@@ -188,7 +189,7 @@ export function KaraokeScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0a1a" />
+      <StatusBar barStyle="light-content" />
 
       {/* ── Header ── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>

@@ -1206,7 +1206,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   heroWrap: { position: 'relative', height: 280 },
   heroImage: { width: '100%', height: '100%', backgroundColor: '#1a1025' },
-  heroOverlay: { ...StyleSheet.absoluteFillObject },
+  heroOverlay: { ...StyleSheet.absoluteFill },
   backBtn: { position: 'absolute', top: 16, left: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: 8 },
   heroActions: { position: 'absolute', top: 16, right: 16, flexDirection: 'row', gap: 8 },
   heroActionBtn: { backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: 8 },
