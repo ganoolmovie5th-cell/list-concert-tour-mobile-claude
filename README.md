@@ -8,8 +8,8 @@ Aplikasi mobile jadwal konser internasional di Indonesia 2025-2027. Versi mobile
 
 ## Features
 
-- 44 konser (sync dari web repo)
-- Status Confirmed / Rumor / Past dengan image dari web
+- 78 konser (sync dari web repo)
+- Status Confirmed / Rumor / Dibatalkan / Past dengan image dari web
 - Home: carousel, stats, search (debounced), filter genre/status, sort
 - Detail: countdown, info lengkap, Google Maps, Google Calendar, Spotify
 - Going / Interested (sync Supabase)
